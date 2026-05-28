@@ -34,7 +34,7 @@ function buildArgs(config: TodoItConfig, target: string): string[] {
       args.push("--glob", glob);
     }
   }
-  args.push("-e", tagPatternSource(config.tags));
+  args.push("-e", tagPatternSource(config.tags, config.commentsOnly, config.commentMarkers));
   // `--` ensures a path is never parsed as a flag (e.g. a file named "-rf").
   args.push("--", target);
   return args;
@@ -72,7 +72,12 @@ export class RipgrepScanner {
     if (config.tags.length === 0) {
       return { results: [], truncated: false };
     }
-    const matcher = new TagMatcher(config.tags, config.caseSensitive);
+    const matcher = new TagMatcher(
+      config.tags,
+      config.caseSensitive,
+      config.commentsOnly,
+      config.commentMarkers,
+    );
     const folderUri = folder.uri.toString();
     const cwd = folder.uri.fsPath;
     const fileMatches = new Map<string, TagMatch[]>();

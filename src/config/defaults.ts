@@ -19,6 +19,10 @@ export const DEFAULT_EXCLUDES = [
   "**/*.min.*",
 ];
 
+// Common comment leaders across languages. A tag must follow one of these
+// (on the same line) to count when `commentsOnly` is enabled.
+export const DEFAULT_COMMENT_MARKERS = ["//", "#", "<!--", "/*", "*", "--", ";", "%"];
+
 export const TASKS_FILE = ".vscode/todos.json";
 export const TASKS_FILE_LOCAL = ".vscode/todos.local.json";
 export const TASKS_SCHEMA_VERSION = 1 as const;

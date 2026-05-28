@@ -17,6 +17,8 @@ export type TaskSortMode = "manual" | "priority" | "dueDate";
 export interface TodoItConfig {
   tags: TagDefinition[];
   caseSensitive: boolean;
+  commentsOnly: boolean;
+  commentMarkers: string[];
   includeGlobs: string[];
   excludeGlobs: string[];
   respectGitignore: boolean;

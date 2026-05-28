@@ -276,8 +276,19 @@
         },
         "todoIt.caseSensitive": {
           "type": "boolean",
-          "default": false,
-          "description": "Match tags case-sensitively."
+          "default": true,
+          "description": "Match tags case-sensitively, so only TODO matches (not Todo or todo). Avoids catching everyday words like 'note' or 'hack'."
+        },
+        "todoIt.commentsOnly": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Only match tags that appear after a comment marker (see `#todoIt.commentMarkers#`). Turn off to match tags anywhere, including prose and strings."
+        },
+        "todoIt.commentMarkers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["//", "#", "<!--", "/*", "*", "--", ";", "%"],
+          "markdownDescription": "Comment leaders that mark the start of a comment, used when `#todoIt.commentsOnly#` is enabled. Add or remove markers to suit your languages."
         },
         "todoIt.include": {
           "type": "array",

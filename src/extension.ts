@@ -74,6 +74,8 @@ export function activate(context: vscode.ExtensionContext): void {
         e.affectsConfiguration("todoIt.include") ||
         e.affectsConfiguration("todoIt.exclude") ||
         e.affectsConfiguration("todoIt.caseSensitive") ||
+        e.affectsConfiguration("todoIt.commentsOnly") ||
+        e.affectsConfiguration("todoIt.commentMarkers") ||
         e.affectsConfiguration("todoIt.respectGitignore") ||
         e.affectsConfiguration("todoIt.maxResults")
       ) {

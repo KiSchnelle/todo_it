@@ -2,43 +2,63 @@ import * as assert from "node:assert";
 import { escapeRegExp, TagMatcher, tagPatternSource } from "../../src/scanner/tagMatcher";
 
 const tags = [{ tag: "TODO" }, { tag: "FIXME" }, { tag: "HACK" }];
+const markers = ["//", "#", "<!--", "/*", "*", "--", ";", "%"];
+
+function matcher(caseSensitive = false, commentsOnly = true): TagMatcher {
+  return new TagMatcher(tags, caseSensitive, commentsOnly, markers);
+}
 
 suite("tagMatcher", () => {
-  test("matches a simple TODO and extracts trailing text + columns", () => {
-    const matches = new TagMatcher(tags, false).match("// TODO: refactor this loop");
-    assert.strictEqual(matches.length, 1);
-    assert.strictEqual(matches[0].tag, "TODO");
-    assert.strictEqual(matches[0].text, "refactor this loop");
-    assert.strictEqual(matches[0].startCol, 3);
-    assert.strictEqual(matches[0].endCol, 7);
+  test("matches a tag inside a comment and extracts trailing text + columns", () => {
+    const m = matcher().match("// TODO: refactor this loop");
+    assert.strictEqual(m.length, 1);
+    assert.strictEqual(m[0].tag, "TODO");
+    assert.strictEqual(m[0].text, "refactor this loop");
+    assert.strictEqual(m[0].startCol, 3);
+    assert.strictEqual(m[0].endCol, 7);
   });
 
-  test("is case-insensitive by default and canonicalizes the tag", () => {
-    const matches = new TagMatcher(tags, false).match("# todo lower case");
-    assert.strictEqual(matches.length, 1);
-    assert.strictEqual(matches[0].tag, "TODO");
+  test("is case-insensitive (and canonicalizes the tag) when case-sensitivity is off", () => {
+    const m = matcher(false).match("# todo lower case");
+    assert.strictEqual(m.length, 1);
+    assert.strictEqual(m[0].tag, "TODO");
   });
 
   test("respects case-sensitivity when enabled", () => {
-    assert.strictEqual(new TagMatcher(tags, true).match("# todo lower").length, 0);
-    assert.strictEqual(new TagMatcher(tags, true).match("# TODO upper").length, 1);
+    assert.strictEqual(matcher(true).match("# todo lower").length, 0);
+    assert.strictEqual(matcher(true).match("# TODO upper").length, 1);
   });
 
-  test("does not match tags embedded in words", () => {
-    assert.strictEqual(new TagMatcher(tags, false).match("MASTODON and todos").length, 0);
+  test("ignores tags outside a comment (prose, code, strings)", () => {
+    assert.deepStrictEqual(matcher().match("update the TODO list before release"), []);
+    assert.deepStrictEqual(matcher().match("const TODO = loadTasks();"), []);
   });
 
-  test("finds multiple tags on one line", () => {
-    const matches = new TagMatcher(tags, false).match("// TODO and FIXME both");
-    assert.deepStrictEqual(
-      matches.map((m) => m.tag),
-      ["TODO", "FIXME"],
-    );
+  test("does not match tags embedded in words even inside comments", () => {
+    assert.deepStrictEqual(matcher().match("// MASTODON and todos"), []);
   });
 
-  test("tagPatternSource falls back to a never-matching pattern when empty", () => {
-    assert.strictEqual(tagPatternSource([]), "\\b\\B");
-    assert.ok(tagPatternSource(tags).includes("TODO"));
+  test("finds multiple tags within one comment", () => {
+    const m = matcher().match("// TODO and FIXME both");
+    assert.deepStrictEqual(m.map((x) => x.tag), ["TODO", "FIXME"]);
+  });
+
+  test("matches HTML/JSDoc style comment markers", () => {
+    assert.strictEqual(matcher().match("<!-- FIXME: escape this -->")[0]?.tag, "FIXME");
+    assert.strictEqual(matcher().match("   * HACK keep the star prefix")[0]?.tag, "HACK");
+  });
+
+  test("when commentsOnly is off, matches tags anywhere", () => {
+    const m = matcher(false, false).match("update the TODO list");
+    assert.strictEqual(m.length, 1);
+    assert.strictEqual(m[0].tag, "TODO");
+  });
+
+  test("tagPatternSource requires a marker only in comments-only mode", () => {
+    assert.ok(!tagPatternSource(tags, false, markers).includes("//"));
+    assert.ok(tagPatternSource(tags, true, markers).includes("//"));
+    assert.ok(tagPatternSource(tags, true, markers).includes("TODO"));
+    assert.strictEqual(tagPatternSource([], true, markers), "\\b\\B");
   });
 
   test("escapeRegExp escapes regex metacharacters", () => {

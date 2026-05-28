@@ -7,6 +7,8 @@ All notable changes to the Todo It extension are documented here.
 ### Added
 - **Hybrid sidebar view** with two sections: "My Tasks" (manual tasks) and "Found in Code" (scanned comment tags).
 - **Comment-tag scanner** powered by ripgrep: configurable tags (TODO, FIXME, HACK, BUG, NOTE, XXX by default), include/exclude globs, `.gitignore` support, and a result cap.
+- **Comments-only matching** (default on): tags are only detected after a comment marker, so prose, strings, and code are ignored. Markers are configurable via `todoIt.commentMarkers`; disable with `todoIt.commentsOnly`.
+- **Case-sensitive by default** (`todoIt.caseSensitive`): only uppercase tags like `TODO`/`NOTE` match, so everyday words such as "note" or "Todo" are not flagged.
 - **Grouping** of scanned results by tag, file, or as a flat list, switchable from the view toolbar.
 - **Editor highlights**: per-tag gutter icons, tag coloring, and overview-ruler marks, toggleable.
 - **Jump to code**: click a scanned match to open the file at the exact line.

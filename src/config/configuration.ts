@@ -6,7 +6,12 @@ import {
   TasksStorageMode,
   TodoItConfig,
 } from "../models/types";
-import { DEFAULT_EXCLUDES, DEFAULT_INCLUDES, DEFAULT_TAGS } from "./defaults";
+import {
+  DEFAULT_COMMENT_MARKERS,
+  DEFAULT_EXCLUDES,
+  DEFAULT_INCLUDES,
+  DEFAULT_TAGS,
+} from "./defaults";
 
 const SECTION = "todoIt";
 
@@ -35,7 +40,9 @@ export class Configuration {
     const tags = cfg.get<TagDefinition[]>("tags", DEFAULT_TAGS);
     return {
       tags: tags.length > 0 ? tags : DEFAULT_TAGS,
-      caseSensitive: cfg.get<boolean>("caseSensitive", false),
+      caseSensitive: cfg.get<boolean>("caseSensitive", true),
+      commentsOnly: cfg.get<boolean>("commentsOnly", true),
+      commentMarkers: cfg.get<string[]>("commentMarkers", DEFAULT_COMMENT_MARKERS),
       includeGlobs: cfg.get<string[]>("include", DEFAULT_INCLUDES),
       excludeGlobs: cfg.get<string[]>("exclude", DEFAULT_EXCLUDES),
       respectGitignore: cfg.get<boolean>("respectGitignore", true),

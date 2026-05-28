@@ -78,7 +78,9 @@ Configure everything under the **Todo It** section of Settings (`todoIt.*`).
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
 | `todoIt.tags` | array | `TODO, FIXME, HACK, BUG, NOTE, XXX` | Tags to scan for, with optional `color`, `backgroundColor`, `iconPath`, and `rulerColor`. |
-| `todoIt.caseSensitive` | boolean | `false` | Match tags case-sensitively. |
+| `todoIt.caseSensitive` | boolean | `true` | Match case-sensitively, so only `TODO` matches (not `Todo`/`todo`) — avoids catching words like "note". |
+| `todoIt.commentsOnly` | boolean | `true` | Only match tags that follow a comment marker — ignores prose, strings, and code. |
+| `todoIt.commentMarkers` | string[] | `// # <!-- /* * -- ; %` | Comment leaders used when `commentsOnly` is on. Tune to suit your languages. |
 | `todoIt.include` | string[] | `["**/*"]` | Glob patterns of files to scan. |
 | `todoIt.exclude` | string[] | `node_modules`, `dist`, `out`, `.git`, `*.min.*` | Glob patterns to exclude. |
 | `todoIt.respectGitignore` | boolean | `true` | Skip files ignored by `.gitignore`. |
