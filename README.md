@@ -3,9 +3,9 @@
 **A modern, hybrid TODO manager for Visual Studio Code** — scan your code for comment tags _and_ keep your own checkable tasks, side by side in one sidebar.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/KiSchnelle/todo_it/ci.yml?branch=main&label=CI&logo=github)](https://github.com/KiSchnelle/todo_it/actions/workflows/ci.yml)
-[![Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/KiSchnelle.todo-it?label=Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/KiSchnelle.todo-it?label=Installs)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/KiSchnelle.todo-it?label=Rating)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it&ssr=false#review-details)
+[![Version](https://vsmarketplacebadges.dev/version-short/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
+[![Rating](https://vsmarketplacebadges.dev/rating-star/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it&ssr=false#review-details)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Todo It is a fresh, MIT-licensed take on the much-loved (but unmaintained) _Todo Tree_ — rebuilt from scratch on the current VS Code APIs, with fast ripgrep scanning and a built-in task list.
