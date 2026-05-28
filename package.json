@@ -2,7 +2,7 @@
   "name": "todo-it",
   "displayName": "Todo It",
   "description": "A modern hybrid TODO manager: scan your code for comment tags (TODO/FIXME/…) and keep your own checkable tasks, all in one view.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",
@@ -36,7 +36,9 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true,
-      "restrictedConfigurations": ["todoIt.tags"]
+      "restrictedConfigurations": [
+        "todoIt.tags"
+      ]
     },
     "virtualWorkspaces": {
       "supported": "limited",
@@ -286,8 +288,19 @@
         },
         "todoIt.commentMarkers": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": ["//", "#", "<!--", "/*", "*", "--", ";", "%"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "//",
+            "#",
+            "<!--",
+            "/*",
+            "*",
+            "--",
+            ";",
+            "%"
+          ],
           "markdownDescription": "Comment leaders that mark the start of a comment, used when `#todoIt.commentsOnly#` is enabled. Add or remove markers to suit your languages."
         },
         "todoIt.include": {
