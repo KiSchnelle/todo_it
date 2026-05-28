@@ -1,0 +1,42 @@
+name: Publish
+
+# Publishes a platform-specific VSIX per target so the correct @vscode/ripgrep
+# binary is bundled. Triggered by pushing a version tag (e.g. v0.0.1), or manually.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win32-x64
+          - os: windows-11-arm
+            target: win32-arm64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: macos-latest
+            target: darwin-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      # npm ci installs the @vscode/ripgrep binary matching this runner's platform,
+      # which matches matrix.target, so vsce bundles the right binary.
+      - run: npm ci
+      # vsce runs `vscode:prepublish` (type-check + lint + production build) first.
+      - run: npx vsce publish --target ${{ matrix.target }} --skip-duplicate --allow-missing-repository
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

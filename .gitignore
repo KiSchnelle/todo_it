@@ -1,0 +1,26 @@
+# Dependencies & build output
+node_modules/
+dist/
+out/
+*.tsbuildinfo
+
+# Test runner downloads (the VS Code build @vscode/test-cli fetches)
+.vscode-test/
+
+# Packaged extension
+*.vsix
+
+# Logs
+*.log
+
+# Secrets / credentials — never commit these to a public repo
+.env
+.env.*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Personal Todo It tasks while dogfooding this repo (the extension's own output)
+.vscode/todos.json
+.vscode/todos.local.json

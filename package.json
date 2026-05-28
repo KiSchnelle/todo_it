@@ -1,0 +1,396 @@
+{
+  "name": "todo-it",
+  "displayName": "Todo It",
+  "description": "A modern hybrid TODO manager: scan your code for comment tags (TODO/FIXME/…) and keep your own checkable tasks, all in one view.",
+  "version": "0.0.1",
+  "license": "MIT",
+  "publisher": "KiSchnelle",
+  "author": "Kilian Schnelle",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "todo",
+    "fixme",
+    "tasks",
+    "todo tree",
+    "comments"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "restrictedConfigurations": ["todoIt.tags"]
+    },
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "Code-tag scanning requires local files and is unavailable in virtual workspaces; manual tasks still work."
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "todoIt",
+          "title": "Todo It",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "todoIt": [
+        {
+          "id": "todoIt.view",
+          "name": "Todo It",
+          "contextualTitle": "Todo It",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "todoIt.view",
+        "when": "workbenchState == empty",
+        "contents": "Open a folder or workspace to scan for todos and manage your tasks.\n[Open Folder](command:vscode.openFolder)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "todoIt.refresh",
+        "title": "Refresh",
+        "category": "Todo It",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "todoIt.addTask",
+        "title": "Add Task",
+        "category": "Todo It",
+        "icon": "$(add)"
+      },
+      {
+        "command": "todoIt.editTask",
+        "title": "Edit Task",
+        "category": "Todo It",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "todoIt.deleteTask",
+        "title": "Delete Task",
+        "category": "Todo It",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "todoIt.toggleTaskDone",
+        "title": "Toggle Task Done",
+        "category": "Todo It"
+      },
+      {
+        "command": "todoIt.openMatch",
+        "title": "Open Todo",
+        "category": "Todo It"
+      },
+      {
+        "command": "todoIt.toggleDecorations",
+        "title": "Toggle Editor Highlights",
+        "category": "Todo It",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "todoIt.setGrouping",
+        "title": "Change Grouping",
+        "category": "Todo It",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "todoIt.groupByTag",
+        "title": "Group Todos by Tag",
+        "category": "Todo It"
+      },
+      {
+        "command": "todoIt.groupByFile",
+        "title": "Group Todos by File",
+        "category": "Todo It"
+      },
+      {
+        "command": "todoIt.groupFlat",
+        "title": "Show Todos as Flat List",
+        "category": "Todo It"
+      },
+      {
+        "command": "todoIt.setTaskSort",
+        "title": "Sort Tasks By…",
+        "category": "Todo It",
+        "icon": "$(sort-precedence)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "todoIt.addTask",
+          "when": "view == todoIt.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "todoIt.setGrouping",
+          "when": "view == todoIt.view",
+          "group": "navigation@2"
+        },
+        {
+          "command": "todoIt.toggleDecorations",
+          "when": "view == todoIt.view",
+          "group": "navigation@3"
+        },
+        {
+          "command": "todoIt.refresh",
+          "when": "view == todoIt.view",
+          "group": "navigation@99"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "todoIt.addTask",
+          "when": "view == todoIt.view && viewItem == section.tasks",
+          "group": "inline@1"
+        },
+        {
+          "command": "todoIt.setTaskSort",
+          "when": "view == todoIt.view && viewItem == section.tasks",
+          "group": "inline@2"
+        },
+        {
+          "command": "todoIt.editTask",
+          "when": "view == todoIt.view && viewItem == task",
+          "group": "inline@1"
+        },
+        {
+          "command": "todoIt.deleteTask",
+          "when": "view == todoIt.view && viewItem == task",
+          "group": "inline@2"
+        },
+        {
+          "command": "todoIt.editTask",
+          "when": "view == todoIt.view && viewItem == task",
+          "group": "1_modify@1"
+        },
+        {
+          "command": "todoIt.deleteTask",
+          "when": "view == todoIt.view && viewItem == task",
+          "group": "1_modify@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "todoIt.editTask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.deleteTask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.toggleTaskDone",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.openMatch",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Todo It",
+      "properties": {
+        "todoIt.tags": {
+          "type": "array",
+          "markdownDescription": "Comment tags to scan for, with optional color, background, and gutter icon overrides.",
+          "items": {
+            "type": "object",
+            "required": [
+              "tag"
+            ],
+            "properties": {
+              "tag": {
+                "type": "string",
+                "description": "The tag text, e.g. TODO."
+              },
+              "color": {
+                "type": "string",
+                "description": "Foreground/gutter color (hex or CSS color)."
+              },
+              "backgroundColor": {
+                "type": "string",
+                "description": "Optional line background color."
+              },
+              "iconPath": {
+                "type": "string",
+                "description": "Optional custom gutter icon path."
+              },
+              "rulerColor": {
+                "type": "string",
+                "description": "Optional overview ruler color."
+              }
+            }
+          },
+          "default": [
+            {
+              "tag": "TODO",
+              "color": "#ffbd2e"
+            },
+            {
+              "tag": "FIXME",
+              "color": "#ff5f56"
+            },
+            {
+              "tag": "HACK",
+              "color": "#c678dd"
+            },
+            {
+              "tag": "BUG",
+              "color": "#e06c75"
+            },
+            {
+              "tag": "NOTE",
+              "color": "#61afef"
+            },
+            {
+              "tag": "XXX",
+              "color": "#e5c07b"
+            }
+          ]
+        },
+        "todoIt.caseSensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Match tags case-sensitively."
+        },
+        "todoIt.include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*"
+          ],
+          "markdownDescription": "Glob patterns of files to scan."
+        },
+        "todoIt.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/.git/**",
+            "**/*.min.*"
+          ],
+          "markdownDescription": "Glob patterns to exclude from scanning."
+        },
+        "todoIt.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Skip files ignored by .gitignore."
+        },
+        "todoIt.maxResults": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 100,
+          "description": "Maximum number of scanned matches to collect."
+        },
+        "todoIt.debounceMs": {
+          "type": "number",
+          "default": 400,
+          "minimum": 0,
+          "description": "Delay before re-scanning a file after it changes."
+        },
+        "todoIt.scan.grouping": {
+          "type": "string",
+          "enum": [
+            "tag",
+            "file",
+            "flat"
+          ],
+          "enumDescriptions": [
+            "Group by tag",
+            "Group by file",
+            "Flat list"
+          ],
+          "default": "tag",
+          "description": "How scanned results are grouped in the tree."
+        },
+        "todoIt.decorations.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight tags in the editor with gutter icons and styling."
+        },
+        "todoIt.tasks.storage": {
+          "type": "string",
+          "enum": [
+            "file",
+            "gitignoredFile",
+            "workspaceState"
+          ],
+          "enumDescriptions": [
+            "Committed .vscode/todos.json (shared via git, multi-root friendly)",
+            "Gitignored .vscode/todos.local.json (file-based but private to you)",
+            "VS Code workspace state (machine-local, never a file)"
+          ],
+          "default": "file",
+          "markdownDescription": "Where manual tasks are stored. `file` is recommended and shareable with your team."
+        },
+        "todoIt.tasks.sortBy": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "priority",
+            "dueDate"
+          ],
+          "enumDescriptions": [
+            "Keep the order tasks were added",
+            "Highest priority first",
+            "Earliest due date first"
+          ],
+          "default": "manual",
+          "description": "How manual tasks are ordered (completed tasks always sink to the bottom)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src test",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "node esbuild.js --test",
+    "test": "npm run compile-tests && vscode-test",
+    "vsix": "vsce package -o todo-it.vsix",
+    "vscode:prepublish": "npm run package"
+  },
+  "dependencies": {
+    "@vscode/ripgrep": "^1.18.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.120.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.4.0",
+    "minimatch": "^10.2.5",
+    "mocha": "^11.7.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0"
+  }
+}
