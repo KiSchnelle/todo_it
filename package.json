@@ -6,6 +6,14 @@
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KiSchnelle/todo_it.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KiSchnelle/todo_it/issues"
+  },
+  "homepage": "https://github.com/KiSchnelle/todo_it#readme",
   "engines": {
     "vscode": "^1.120.0"
   },
@@ -372,7 +380,7 @@
     "lint": "eslint src test",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "compile-tests": "node esbuild.js --test",
-    "test": "npm run compile-tests && vscode-test",
+    "test": "npm run compile && npm run compile-tests && vscode-test",
     "vsix": "vsce package -o todo-it.vsix",
     "vscode:prepublish": "npm run package"
   },

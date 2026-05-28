@@ -37,6 +37,6 @@ jobs:
       # which matches matrix.target, so vsce bundles the right binary.
       - run: npm ci
       # vsce runs `vscode:prepublish` (type-check + lint + production build) first.
-      - run: npx vsce publish --target ${{ matrix.target }} --skip-duplicate --allow-missing-repository
+      - run: npx vsce publish --target ${{ matrix.target }} --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
