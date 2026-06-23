@@ -2,7 +2,7 @@
   "name": "todo-it",
   "displayName": "Todo It",
   "description": "Find TODO, FIXME, HACK, BUG, NOTE comment tags in your code and manage your own checkable tasks with priority, due dates, and notes — a modern, maintained alternative to Todo Tree.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",

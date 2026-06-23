@@ -4,6 +4,8 @@ All notable changes to the Todo It extension are documented here.
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-23
+
 ### Added
 - **Status bar item** showing open task and scanned-todo counts; click to focus the Todo It view (toggle with `todoIt.statusBar.enabled`).
 - **Inline quick-add row** at the top of *My Tasks* — single prompt for the title, with priority/due/note editable later in the Task Details panel.
