@@ -42,15 +42,26 @@ TODO IT
 - Colors and icons are configurable per tag; toggle all highlighting with one command.
 
 ### 📌 My Tasks — built-in task list
+- **Quick-add** at the top of *My Tasks* — single-prompt capture, plus a **drag-and-drop** to reorder.
 - Add, check off (real tree **checkboxes**), and delete tasks without leaving the editor.
 - **Click a task to open the Task Details panel** — a dedicated editor with title, priority, due date, and a **large multi-line note** field (save with `⌘/Ctrl+S`).
-- **Flexible due dates**: an exact date (`2026-06-01`) or a relative one (`tomorrow`, `3 days`, `2 weeks`, `1 month`) — in the panel or the quick-add prompts.
+- **Flexible due dates**: an exact date (`2026-06-01`) or a relative one (`tomorrow`, `3 days`, `2 weeks`, `1 month`).
 - **Sort** tasks by priority, due date, or manual order (completed tasks always sink to the bottom).
 - Tasks are **persisted with your project** in `.vscode/todos.json` by default — commit them to share with your team, or switch to a private/local store.
 
-### ⚡ Live & multi-root
+### 🔗 Cross-link scanned ↔ task
+- Right-click any scanned tag → **Track as Task** to create a manual task pre-populated with the tag text and a back-link to `file:line`.
+- Linked tasks show a 🔗 indicator and an **Open Linked Source** action (inline icon, context menu, or *Open* button in the Task Details panel) to jump straight back to the code.
+
+### 🔎 Filter and visibility
+- **Filter** by substring (matches task titles, notes, scanned tag text, line, and path) — click the funnel icon in the view title.
+- **Status bar** badge shows `open tasks · todos in code` and focuses the view on click.
+- **Markdown checklists**: unchecked `- [ ]` lines in `.md`/`.markdown`/`.mdx` are also surfaced under *Found in Code* (toggle with `todoIt.markdownTasks.enabled`).
+
+### ⚡ Live, multi-root, and on the web
 - **Live updates**: files are re-scanned automatically as you edit and save (debounced); deletions disappear on their own.
 - **Monorepo-ready**: results and tasks are scoped per workspace folder.
+- **Works in the browser** (github.dev / vscode.dev / Codespaces / Gitpod): a JavaScript fallback scanner kicks in when ripgrep isn't available.
 
 ## Getting started
 
@@ -65,10 +76,13 @@ All commands are available from the Command Palette under the **Todo It** catego
 
 | Command | Title | Where |
 | --- | --- | --- |
-| `todoIt.addTask` | Add Task | View toolbar (`+`), Command Palette |
+| `todoIt.addTask` | Add Task | View toolbar (`+`), the inline "Add a task…" row, Command Palette |
 | `todoIt.editTask` | Open Task Details (title / priority / due / note) | Click a task, pencil icon |
 | `todoIt.deleteTask` | Delete Task | Task context menu |
 | `todoIt.setTaskSort` | Sort Tasks By… | My Tasks header |
+| `todoIt.setFilter` / `todoIt.clearFilter` | Filter… / Clear Filter | View toolbar (funnel) |
+| `todoIt.trackAsTask` | Track as Task | Scanned tag context menu (creates a linked manual task) |
+| `todoIt.openTaskLink` | Open Linked Source | Linked task inline icon + context menu |
 | `todoIt.refresh` | Refresh | View toolbar |
 | `todoIt.setGrouping` | Change Grouping | View toolbar |
 | `todoIt.toggleDecorations` | Toggle Editor Highlights | View toolbar |
@@ -81,6 +95,8 @@ Configure everything under the **Todo It** section of Settings (`todoIt.*`).
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
 | `todoIt.tags` | array | `TODO, FIXME, HACK, BUG, NOTE, XXX` | Tags to scan for, with optional `color`, `backgroundColor`, `iconPath`, and `rulerColor`. |
+| `todoIt.markdownTasks.enabled` | boolean | `true` | Also surface unchecked Markdown checklists (`- [ ]`) from `.md`/`.markdown`/`.mdx` files. |
+| `todoIt.statusBar.enabled` | boolean | `true` | Show task/todo counts in the status bar. |
 | `todoIt.caseSensitive` | boolean | `true` | Match case-sensitively, so only `TODO` matches (not `Todo`/`todo`) — avoids catching words like "note". |
 | `todoIt.commentsOnly` | boolean | `true` | Only match tags that follow a comment marker — ignores prose, strings, and code. |
 | `todoIt.commentMarkers` | string[] | `// # <!-- /* * -- ; %` | Comment leaders used when `commentsOnly` is on. Tune to suit your languages. |
@@ -117,7 +133,7 @@ Configure everything under the **Todo It** section of Settings (`todoIt.*`).
 ## Requirements
 
 - **VS Code 1.120.0 or newer.**
-- The code scanner needs local files (it runs ripgrep), so it is unavailable in virtual workspaces such as github.dev — your manual tasks still work there.
+- On desktop, scanning uses the bundled ripgrep binary (very fast). In browser-based VS Code (github.dev / vscode.dev / Codespaces / Gitpod), a JavaScript fallback takes over — slower, and it doesn't honor `.gitignore` (use `todoIt.exclude`).
 
 ## Trust & privacy
 

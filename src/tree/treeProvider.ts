@@ -11,6 +11,7 @@ import { toTreeItem } from "./nodes";
 export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private filter: string | undefined;
 
   constructor(
     private readonly taskStore: TaskStore,
@@ -20,6 +21,53 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
   refresh(node?: TreeNode): void {
     this._onDidChangeTreeData.fire(node);
+  }
+
+  /** Set or clear the visibility filter. Empty/undefined clears it. */
+  setFilter(value: string | undefined): void {
+    const next = value?.trim() ? value.trim() : undefined;
+    if (this.filter === next) {
+      return;
+    }
+    this.filter = next;
+    void vscode.commands.executeCommand("setContext", "todoIt.hasFilter", !!next);
+    this.refresh();
+  }
+
+  getFilter(): string | undefined {
+    return this.filter;
+  }
+
+  /** Message rendered above the tree (truncation, active filter). */
+  getMessage(): string | undefined {
+    if (this.filter) {
+      return `Filtering by “${this.filter}” — clear the filter to see everything.`;
+    }
+    if (this.scanStore.truncated) {
+      return `Result limit (${this.config.all.maxResults}) reached. Refine todoIt.exclude or raise todoIt.maxResults.`;
+    }
+    return undefined;
+  }
+
+  private taskMatchesFilter(title: string, note: string | undefined): boolean {
+    if (!this.filter) {
+      return true;
+    }
+    const f = this.filter.toLowerCase();
+    return title.toLowerCase().includes(f) || (note?.toLowerCase().includes(f) ?? false);
+  }
+
+  private scanMatchesFilter(m: TagMatch): boolean {
+    if (!this.filter) {
+      return true;
+    }
+    const f = this.filter.toLowerCase();
+    return (
+      m.text.toLowerCase().includes(f) ||
+      m.lineText.toLowerCase().includes(f) ||
+      m.tag.toLowerCase().includes(f) ||
+      m.uri.toLowerCase().includes(f)
+    );
   }
 
   getTreeItem(node: TreeNode): vscode.TreeItem {
@@ -74,8 +122,16 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   }
 
   private async taskNodes(folder: vscode.WorkspaceFolder): Promise<TreeNode[]> {
-    const tasks = sortTasks(await this.taskStore.getTasks(folder), this.config.all.taskSort);
-    return tasks.map((task) => ({ kind: "task", task, folderUri: folder.uri.toString() }));
+    const all = sortTasks(await this.taskStore.getTasks(folder), this.config.all.taskSort);
+    const tasks = all.filter((t) => this.taskMatchesFilter(t.title, t.note));
+    const folderUri = folder.uri.toString();
+    const nodes: TreeNode[] = tasks.map((task) => ({ kind: "task" as const, task, folderUri }));
+    // The quick-add row is hidden while a filter is active — filtering is for finding existing
+    // things, and a "+ Add task…" row that always matches would be misleading.
+    if (!this.filter) {
+      nodes.unshift({ kind: "quickAdd", folderUri });
+    }
+    return nodes;
   }
 
   // ----- Scanned section -----
@@ -83,11 +139,11 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   private scannedSectionChildren(): TreeNode[] {
     const folders = getFolders();
     if (folders.length === 0) {
-      return this.groupedChildren(this.scanStore.allMatches());
+      return this.groupedChildren(this.matchesForFolder(undefined));
     }
     if (isMultiRoot()) {
       return folders
-        .filter((folder) => this.scanStore.hasFolder(folder.uri.toString()))
+        .filter((folder) => this.matchesForFolder(folder.uri.toString()).length > 0)
         .map((folder) => ({
           kind: "scanFolder",
           folderUri: folder.uri.toString(),
@@ -99,7 +155,8 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
   private matchesForFolder(folderUri: string | undefined): TagMatch[] {
     const all = this.scanStore.allMatches();
-    return folderUri ? all.filter((m) => m.folderUri === folderUri) : all;
+    const byFolder = folderUri ? all.filter((m) => m.folderUri === folderUri) : all;
+    return byFolder.filter((m) => this.scanMatchesFilter(m));
   }
 
   private groupedChildren(matches: TagMatch[]): TreeNode[] {

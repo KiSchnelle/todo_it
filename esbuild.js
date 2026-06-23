@@ -40,7 +40,8 @@ function walk(dir, predicate, acc = []) {
 }
 
 async function buildExtension() {
-  const ctx = await esbuild.context({
+  // Node host: imports child_process, the bundled ripgrep, and Node std libs.
+  const node = await esbuild.context({
     entryPoints: ["src/extension.ts"],
     bundle: true,
     outfile: "dist/extension.js",
@@ -55,11 +56,26 @@ async function buildExtension() {
     logLevel: "silent",
     plugins: [problemMatcherPlugin],
   });
+  // Web host: pure VS Code APIs, no Node std lib. The browser bundle deliberately
+  // excludes the Node entry point so child_process/ripgrep can't leak in.
+  const web = await esbuild.context({
+    entryPoints: ["src/extension.web.ts"],
+    bundle: true,
+    outfile: "dist/extension.web.js",
+    format: "cjs",
+    platform: "browser",
+    target: "es2022",
+    external: ["vscode"],
+    sourcemap: !production,
+    minify: production,
+    logLevel: "silent",
+    plugins: [problemMatcherPlugin],
+  });
   if (watch) {
-    await ctx.watch();
+    await Promise.all([node.watch(), web.watch()]);
   } else {
-    await ctx.rebuild();
-    await ctx.dispose();
+    await Promise.all([node.rebuild(), web.rebuild()]);
+    await Promise.all([node.dispose(), web.dispose()]);
   }
 }
 

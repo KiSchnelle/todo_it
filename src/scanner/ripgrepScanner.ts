@@ -4,13 +4,10 @@ import { rgPath } from "@vscode/ripgrep";
 import * as vscode from "vscode";
 import { ScannedFileResult, TagMatch, TodoItConfig } from "../models/types";
 import { Logger } from "../util/logger";
+import { isMarkdownUri, matchMarkdownTask, MD_TASK_TAG } from "./markdownTasks";
 import { RgJsonStream } from "./rgJsonParser";
+import { ScanResult, Scanner } from "./scanner";
 import { TagMatcher, tagPatternSource } from "./tagMatcher";
-
-export interface ScanResult {
-  results: ScannedFileResult[];
-  truncated: boolean;
-}
 
 /** Task storage files must never appear as scanned code tags. */
 const ALWAYS_EXCLUDE = ["**/.vscode/todos.json", "**/.vscode/todos.local.json"];
@@ -34,13 +31,21 @@ function buildArgs(config: TodoItConfig, target: string): string[] {
       args.push("--glob", glob);
     }
   }
-  args.push("-e", tagPatternSource(config.tags, config.commentsOnly, config.commentMarkers));
+  args.push(
+    "-e",
+    tagPatternSource(
+      config.tags,
+      config.commentsOnly,
+      config.commentMarkers,
+      config.markdownTasksEnabled,
+    ),
+  );
   // `--` ensures a path is never parsed as a flag (e.g. a file named "-rf").
   args.push("--", target);
   return args;
 }
 
-export class RipgrepScanner {
+export class RipgrepScanner implements Scanner {
   constructor(private readonly logger: Logger) {}
 
   /** Scan an entire workspace folder. */
@@ -69,7 +74,7 @@ export class RipgrepScanner {
     target: string,
     token?: vscode.CancellationToken,
   ): Promise<ScanResult> {
-    if (config.tags.length === 0) {
+    if (config.tags.length === 0 && !config.markdownTasksEnabled) {
       return { results: [], truncated: false };
     }
     const matcher = new TagMatcher(
@@ -90,12 +95,22 @@ export class RipgrepScanner {
       }
       const fileUri = vscode.Uri.file(path.resolve(cwd, rg.path)).toString();
       const line = rg.lineNumber - 1;
-      for (const lineMatch of matcher.match(rg.lineText)) {
+      const pushMatch = (m: TagMatch): boolean => {
         if (count >= config.maxResults) {
           truncated = true;
-          return;
+          return false;
         }
-        const tagMatch: TagMatch = {
+        const arr = fileMatches.get(fileUri);
+        if (arr) {
+          arr.push(m);
+        } else {
+          fileMatches.set(fileUri, [m]);
+        }
+        count++;
+        return true;
+      };
+      for (const lineMatch of matcher.match(rg.lineText)) {
+        const ok = pushMatch({
           matchId: `${fileUri}|${line}|${lineMatch.startCol}|${lineMatch.tag}`,
           uri: fileUri,
           folderUri,
@@ -105,14 +120,26 @@ export class RipgrepScanner {
           endCol: lineMatch.endCol,
           lineText: rg.lineText,
           text: lineMatch.text,
-        };
-        const arr = fileMatches.get(fileUri);
-        if (arr) {
-          arr.push(tagMatch);
-        } else {
-          fileMatches.set(fileUri, [tagMatch]);
+        });
+        if (!ok) {
+          return;
         }
-        count++;
+      }
+      if (config.markdownTasksEnabled && isMarkdownUri(fileUri)) {
+        const md = matchMarkdownTask(rg.lineText);
+        if (md) {
+          pushMatch({
+            matchId: `${fileUri}|${line}|${md.startCol}|${MD_TASK_TAG}`,
+            uri: fileUri,
+            folderUri,
+            tag: MD_TASK_TAG,
+            line,
+            startCol: md.startCol,
+            endCol: md.endCol,
+            lineText: rg.lineText,
+            text: md.text,
+          });
+        }
       }
     });
 

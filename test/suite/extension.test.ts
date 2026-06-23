@@ -16,6 +16,11 @@ suite("extension", () => {
       "todoIt.openMatch",
       "todoIt.toggleDecorations",
       "todoIt.setGrouping",
+      "todoIt.setTaskSort",
+      "todoIt.setFilter",
+      "todoIt.clearFilter",
+      "todoIt.trackAsTask",
+      "todoIt.openTaskLink",
     ];
     for (const id of expected) {
       assert.ok(commands.includes(id), `missing command ${id}`);

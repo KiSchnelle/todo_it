@@ -35,6 +35,7 @@
     "productivity"
   ],
   "main": "./dist/extension.js",
+  "browser": "./dist/extension.web.js",
   "icon": "icon.png",
   "galleryBanner": {
     "color": "#2563EB",
@@ -50,10 +51,7 @@
         "todoIt.tags"
       ]
     },
-    "virtualWorkspaces": {
-      "supported": "limited",
-      "description": "Code-tag scanning requires local files and is unavailable in virtual workspaces; manual tasks still work."
-    }
+    "virtualWorkspaces": true
   },
   "contributes": {
     "viewsContainers": {
@@ -149,6 +147,30 @@
         "title": "Sort Tasks By…",
         "category": "Todo It",
         "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "todoIt.setFilter",
+        "title": "Filter…",
+        "category": "Todo It",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "todoIt.clearFilter",
+        "title": "Clear Filter",
+        "category": "Todo It",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "todoIt.trackAsTask",
+        "title": "Track as Task",
+        "category": "Todo It",
+        "icon": "$(bookmark)"
+      },
+      {
+        "command": "todoIt.openTaskLink",
+        "title": "Open Linked Source",
+        "category": "Todo It",
+        "icon": "$(go-to-file)"
       }
     ],
     "menus": {
@@ -169,6 +191,16 @@
           "group": "navigation@3"
         },
         {
+          "command": "todoIt.setFilter",
+          "when": "view == todoIt.view && !todoIt.hasFilter",
+          "group": "navigation@4"
+        },
+        {
+          "command": "todoIt.clearFilter",
+          "when": "view == todoIt.view && todoIt.hasFilter",
+          "group": "navigation@4"
+        },
+        {
           "command": "todoIt.refresh",
           "when": "view == todoIt.view",
           "group": "navigation@99"
@@ -187,23 +219,43 @@
         },
         {
           "command": "todoIt.editTask",
-          "when": "view == todoIt.view && viewItem == task",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
           "group": "inline@1"
         },
         {
           "command": "todoIt.deleteTask",
-          "when": "view == todoIt.view && viewItem == task",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
           "group": "inline@2"
         },
         {
           "command": "todoIt.editTask",
-          "when": "view == todoIt.view && viewItem == task",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
           "group": "1_modify@1"
         },
         {
           "command": "todoIt.deleteTask",
-          "when": "view == todoIt.view && viewItem == task",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
           "group": "1_modify@2"
+        },
+        {
+          "command": "todoIt.openTaskLink",
+          "when": "view == todoIt.view && viewItem =~ /\\blinked\\b/",
+          "group": "inline@0"
+        },
+        {
+          "command": "todoIt.openTaskLink",
+          "when": "view == todoIt.view && viewItem =~ /\\blinked\\b/",
+          "group": "1_modify@0"
+        },
+        {
+          "command": "todoIt.trackAsTask",
+          "when": "view == todoIt.view && viewItem == match",
+          "group": "inline"
+        },
+        {
+          "command": "todoIt.trackAsTask",
+          "when": "view == todoIt.view && viewItem == match",
+          "group": "1_modify"
         }
       ],
       "commandPalette": [
@@ -221,6 +273,14 @@
         },
         {
           "command": "todoIt.openMatch",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.trackAsTask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.openTaskLink",
           "when": "false"
         }
       ]
@@ -373,6 +433,16 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight tags in the editor with gutter icons and styling."
+        },
+        "todoIt.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show open task and scanned-todo counts in the status bar. Click the item to focus the Todo It view."
+        },
+        "todoIt.markdownTasks.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also surface unchecked Markdown task lines (`- [ ] something`) from `.md`/`.markdown`/`.mdx` files under Found in Code."
         },
         "todoIt.tasks.storage": {
           "type": "string",

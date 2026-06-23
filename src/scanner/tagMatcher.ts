@@ -1,4 +1,5 @@
 import { TagDefinition } from "../models/types";
+import { MD_TASK_RG_PATTERN } from "./markdownTasks";
 
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -18,20 +19,29 @@ function markerGroup(markers: string[]): string {
 }
 
 /**
- * Regex source for ripgrep. When `commentsOnly` is set, a tag only counts if a
- * comment marker appears before it on the line. `\b` works in both JS and Rust
- * regex; the fallback `\b\B` never matches (also valid in both engines).
+ * Regex source for ripgrep. Combines:
+ *  - the configured comment-tag pattern (optionally requiring a comment marker), and
+ *  - the markdown-task pattern (when `markdownTasksEnabled`).
+ * `\b` and `\b\B` work in both JS and Rust regex; `\b\B` never matches.
  */
 export function tagPatternSource(
   tags: TagDefinition[],
   commentsOnly: boolean,
   markers: string[],
+  markdownTasksEnabled = false,
 ): string {
   const alternation = tagAlternation(tags);
-  if (!alternation) {
+  const alternatives: string[] = [];
+  if (alternation) {
+    alternatives.push(commentsOnly ? `${markerGroup(markers)}.*?${alternation}` : alternation);
+  }
+  if (markdownTasksEnabled) {
+    alternatives.push(MD_TASK_RG_PATTERN);
+  }
+  if (alternatives.length === 0) {
     return "\\b\\B";
   }
-  return commentsOnly ? `${markerGroup(markers)}.*?${alternation}` : alternation;
+  return alternatives.length === 1 ? alternatives[0] : `(?:${alternatives.join("|")})`;
 }
 
 export interface LineMatch {

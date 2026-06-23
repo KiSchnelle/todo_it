@@ -3,13 +3,9 @@ import { ManualTask, TaskPriority } from "../models/types";
 import { TaskStore } from "../tasks/taskStore";
 import { parseDueDate } from "../util/date";
 
-interface SaveMessage {
-  type: "save";
-  title: string;
-  priority: string;
-  dueDate: string;
-  note: string;
-}
+type PanelMessage =
+  | { type: "save"; title: string; priority: string; dueDate: string; note: string }
+  | { type: "openLink" };
 
 function makeNonce(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -50,7 +46,7 @@ export class TaskDetailPanel {
     this.panel.webview.html = this.render();
     this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
     this.panel.webview.onDidReceiveMessage(
-      (message: SaveMessage) => void this.onMessage(message),
+      (message: PanelMessage) => void this.onMessage(message),
       undefined,
       this.disposables,
     );
@@ -60,6 +56,11 @@ export class TaskDetailPanel {
     this.folder = folder;
     this.taskId = task.id;
     this.panel.title = task.title || "Task Details";
+    const link = task.link
+      ? {
+          path: `${vscode.workspace.asRelativePath(vscode.Uri.parse(task.link.uri))}:${task.link.line + 1}`,
+        }
+      : null;
     void this.panel.webview.postMessage({
       type: "load",
       task: {
@@ -67,12 +68,20 @@ export class TaskDetailPanel {
         priority: task.priority ?? "",
         dueDate: task.dueDate ?? "",
         note: task.note ?? "",
+        link,
       },
     });
   }
 
-  private async onMessage(message: SaveMessage): Promise<void> {
-    if (message.type !== "save" || !this.folder) {
+  private async onMessage(message: PanelMessage): Promise<void> {
+    if (!this.folder) {
+      return;
+    }
+    if (message.type === "openLink") {
+      await this.openLink();
+      return;
+    }
+    if (message.type !== "save") {
       return;
     }
     const title = message.title.trim();
@@ -99,6 +108,23 @@ export class TaskDetailPanel {
     await this.taskStore.updateTask(this.folder, this.taskId, { title, priority, dueDate, note });
     this.panel.title = title;
     void this.panel.webview.postMessage({ type: "status", saved: true, dueDate: dueDate ?? "" });
+  }
+
+  private async openLink(): Promise<void> {
+    if (!this.folder) {
+      return;
+    }
+    const tasks = await this.taskStore.getTasks(this.folder);
+    const task = tasks.find((t) => t.id === this.taskId);
+    if (!task?.link) {
+      return;
+    }
+    const uri = vscode.Uri.parse(task.link.uri);
+    const pos = new vscode.Position(task.link.line, task.link.column ?? 0);
+    const doc = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: false });
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
   }
 
   private dispose(): void {
@@ -143,6 +169,14 @@ export class TaskDetailPanel {
   #status.ok { color: var(--vscode-charts-green, #89d185); }
   #status.err { color: var(--vscode-errorForeground); }
   .hint { color: var(--vscode-descriptionForeground); font-size: 11px; margin-top: 4px; }
+  .link-row { display: flex; align-items: center; gap: 8px; }
+  .link-row code {
+    flex: 1; padding: 6px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family);
+    background: var(--vscode-textBlockQuote-background); color: var(--vscode-textPreformat-foreground);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .link-row button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  .link-row button:hover { background: var(--vscode-button-secondaryHoverBackground); }
 </style>
 </head>
 <body>
@@ -161,6 +195,13 @@ export class TaskDetailPanel {
     <div>
       <label for="due">Due date</label>
       <input id="due" type="text" placeholder="2026-06-01 or 2 weeks" />
+    </div>
+  </div>
+  <div id="linkRow" style="display:none">
+    <label>Linked source</label>
+    <div class="link-row">
+      <code id="linkPath" title=""></code>
+      <button id="openLink" type="button">Open</button>
     </div>
   </div>
   <label for="note">Note</label>
@@ -194,6 +235,15 @@ export class TaskDetailPanel {
         byId('priority').value = msg.task.priority;
         byId('due').value = msg.task.dueDate;
         byId('note').value = msg.task.note;
+        const row = byId('linkRow');
+        if (msg.task.link) {
+          // textContent is XSS-safe — the path never reaches innerHTML.
+          byId('linkPath').textContent = msg.task.link.path;
+          byId('linkPath').title = msg.task.link.path;
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
         setStatus('', false);
       } else if (msg.type === 'status') {
         if (msg.error) {
@@ -205,6 +255,7 @@ export class TaskDetailPanel {
       }
     });
     byId('save').addEventListener('click', save);
+    byId('openLink').addEventListener('click', () => vscode.postMessage({ type: 'openLink' }));
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
     });

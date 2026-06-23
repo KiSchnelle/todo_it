@@ -28,6 +28,8 @@ export interface TodoItConfig {
   decorationsEnabled: boolean;
   tasksStorage: TasksStorageMode;
   taskSort: TaskSortMode;
+  statusBarEnabled: boolean;
+  markdownTasksEnabled: boolean;
 }
 
 // ---------- Scanned comment-tag results ----------
@@ -58,6 +60,15 @@ export interface ScannedFileResult {
 
 export type TaskPriority = "low" | "medium" | "high";
 
+/** Optional pointer from a manual task back to a scanned comment-tag in source. */
+export interface TaskLink {
+  uri: string;
+  line: number;
+  column?: number;
+  tag?: string;
+  preview?: string;
+}
+
 export interface ManualTask {
   id: string;
   title: string;
@@ -65,6 +76,7 @@ export interface ManualTask {
   priority?: TaskPriority;
   dueDate?: string; // ISO date YYYY-MM-DD
   note?: string;
+  link?: TaskLink;
   createdAt: number;
   updatedAt: number;
   order: number;
@@ -81,6 +93,7 @@ export type TreeNode =
   | { kind: "section"; id: "tasks" | "scanned"; label: string }
   | { kind: "taskFolder"; folderUri: string; label: string }
   | { kind: "task"; task: ManualTask; folderUri: string }
+  | { kind: "quickAdd"; folderUri: string }
   | { kind: "scanFolder"; folderUri: string; label: string }
   | { kind: "tagGroup"; tag: string; folderUri?: string; count?: number }
   | { kind: "fileGroup"; uri: string; folderUri: string; count?: number }

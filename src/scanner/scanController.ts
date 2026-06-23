@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { Configuration } from "../config/configuration";
 import { Logger } from "../util/logger";
 import { getFolders } from "../workspace/folders";
-import { RipgrepScanner } from "./ripgrepScanner";
+import { Scanner } from "./scanner";
 import { ScanStore } from "./scanStore";
 
 /** Coordinates folder/file scans, replacing results in the store and cancelling superseded scans. */
@@ -10,7 +10,7 @@ export class ScanController {
   private readonly inFlight = new Map<string, vscode.CancellationTokenSource>();
 
   constructor(
-    private readonly scanner: RipgrepScanner,
+    private readonly scanner: Scanner,
     private readonly store: ScanStore,
     private readonly config: Configuration,
     private readonly logger: Logger,

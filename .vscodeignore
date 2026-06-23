@@ -16,5 +16,6 @@ media/icon.svg
 **/.DS_Store
 
 !dist/extension.js
+!dist/extension.web.js
 !node_modules/@vscode/ripgrep/**
 !node_modules/@vscode/ripgrep-*/**

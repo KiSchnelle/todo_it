@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
-import { ManualTask, TaskPriority } from "../models/types";
+import { ManualTask, TaskLink, TaskPriority } from "../models/types";
 import { Logger } from "../util/logger";
+import { newId } from "../util/uuid";
+import { applyReorder, ReorderTarget } from "./reorder";
 import { TaskStorage } from "./taskStorage";
 
 export interface NewTaskInput {
@@ -9,6 +10,7 @@ export interface NewTaskInput {
   priority?: TaskPriority;
   dueDate?: string;
   note?: string;
+  link?: TaskLink;
 }
 
 export interface TaskUpdate {
@@ -16,6 +18,7 @@ export interface TaskUpdate {
   priority?: TaskPriority;
   dueDate?: string;
   note?: string;
+  link?: TaskLink;
   done?: boolean;
 }
 
@@ -51,16 +54,26 @@ export class TaskStore {
     return [...tasks].sort(compareTasks);
   }
 
+  /** All currently-loaded tasks across folders (sync). Folders not yet queried are not included. */
+  all(): ManualTask[] {
+    const out: ManualTask[] = [];
+    for (const tasks of this.byFolder.values()) {
+      out.push(...tasks);
+    }
+    return out;
+  }
+
   async addTask(folder: vscode.WorkspaceFolder, input: NewTaskInput): Promise<ManualTask> {
     const tasks = await this.ensureLoaded(folder);
     const now = Date.now();
     const task: ManualTask = {
-      id: randomUUID(),
+      id: newId(),
       title: input.title,
       done: false,
       priority: input.priority,
       dueDate: input.dueDate,
       note: input.note,
+      link: input.link,
       createdAt: now,
       updatedAt: now,
       order: tasks.reduce((max, t) => Math.max(max, t.order), 0) + 1,
@@ -92,6 +105,9 @@ export class TaskStore {
     if ("note" in update) {
       task.note = update.note;
     }
+    if ("link" in update) {
+      task.link = update.link;
+    }
     task.updatedAt = Date.now();
     await this.persist(folder, tasks);
   }
@@ -107,6 +123,16 @@ export class TaskStore {
       return;
     }
     await this.persist(folder, next);
+  }
+
+  async reorder(
+    folder: vscode.WorkspaceFolder,
+    draggedIds: string[],
+    target: ReorderTarget,
+  ): Promise<void> {
+    const tasks = await this.ensureLoaded(folder);
+    applyReorder(tasks, draggedIds, target);
+    await this.persist(folder, tasks);
   }
 
   private async ensureLoaded(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {

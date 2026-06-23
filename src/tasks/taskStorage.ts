@@ -39,6 +39,7 @@ function normalizeTask(t: ManualTask): ManualTask {
     ...(t.priority ? { priority: t.priority } : {}),
     ...(t.dueDate ? { dueDate: t.dueDate } : {}),
     ...(t.note ? { note: t.note } : {}),
+    ...(t.link ? { link: t.link } : {}),
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     order: t.order,

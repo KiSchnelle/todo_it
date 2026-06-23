@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
 import { activateCommon } from "./activate";
-import { RipgrepScanner } from "./scanner/ripgrepScanner";
+import { JsScanner } from "./scanner/jsScanner";
 
-/** Node-host entry point: uses the bundled ripgrep binary for fast scanning. */
+/** Web-host entry point: scans via `workspace.fs` since `child_process`/ripgrep aren't available. */
 export function activate(context: vscode.ExtensionContext): void {
-  activateCommon(context, (logger) => new RipgrepScanner(logger));
+  activateCommon(context, (logger) => new JsScanner(logger));
 }
 
 export function deactivate(): void {

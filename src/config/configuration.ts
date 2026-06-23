@@ -52,6 +52,8 @@ export class Configuration {
       decorationsEnabled: cfg.get<boolean>("decorations.enabled", true),
       tasksStorage: cfg.get<TasksStorageMode>("tasks.storage", "file"),
       taskSort: cfg.get<TaskSortMode>("tasks.sortBy", "manual"),
+      statusBarEnabled: cfg.get<boolean>("statusBar.enabled", true),
+      markdownTasksEnabled: cfg.get<boolean>("markdownTasks.enabled", true),
     };
   }
 
