@@ -6,6 +6,9 @@
 [![Version](https://vsmarketplacebadges.dev/version-short/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)
 [![Rating](https://vsmarketplacebadges.dev/rating-star/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it&ssr=false#review-details)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/KiSchnelle/todo-it?label=Open%20VSX)](https://open-vsx.org/extension/KiSchnelle/todo-it)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/KiSchnelle/todo-it?label=downloads)](https://open-vsx.org/extension/KiSchnelle/todo-it)
+[![Open VSX Rating](https://img.shields.io/open-vsx/rating/KiSchnelle/todo-it?label=rating)](https://open-vsx.org/extension/KiSchnelle/todo-it/reviews)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Todo It is a fresh, MIT-licensed take on the much-loved (but unmaintained) _Todo Tree_ — rebuilt from scratch on the current VS Code APIs, with fast ripgrep scanning and a built-in task list.

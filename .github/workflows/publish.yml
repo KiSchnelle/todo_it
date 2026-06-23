@@ -48,7 +48,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # vsce runs `vscode:prepublish` (type-check + lint + production build) first.
-      - run: npx vsce publish --target ${{ matrix.target }} --skip-duplicate
+      # Package once with vsce (runs `vscode:prepublish` = typecheck + lint + production build),
+      # then push the same vsix to both the VS Marketplace and Open VSX.
+      - name: Package
+        run: npx vsce package --target ${{ matrix.target }} -o todo-it-${{ matrix.target }}.vsix
+      - name: Publish to VS Marketplace
+        run: npx vsce publish --packagePath todo-it-${{ matrix.target }}.vsix --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      # Open VSX failures (e.g. unverified namespace, transient outage) don't fail the run.
+      - name: Publish to Open VSX
+        run: npx ovsx publish todo-it-${{ matrix.target }}.vsix --skip-duplicate
+        continue-on-error: true
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

@@ -432,6 +432,7 @@
     "eslint": "^10.5.0",
     "minimatch": "^10.2.5",
     "mocha": "^11.7.6",
+    "ovsx": "^1.0.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.0"
   }
