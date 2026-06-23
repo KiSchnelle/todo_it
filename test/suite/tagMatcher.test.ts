@@ -48,6 +48,24 @@ suite("tagMatcher", () => {
     assert.strictEqual(matcher().match("   * HACK keep the star prefix")[0]?.tag, "HACK");
   });
 
+  test("anchors `*`, `--`, `;`, `%` to line-start with required whitespace", () => {
+    // Markdown bold and code patterns no longer false-positive.
+    assert.deepStrictEqual(matcher().match("**Comment-tag scanner** TODO, FIXME, HACK"), []);
+    assert.deepStrictEqual(matcher().match("- **Status bar** TODO and FIXME"), []);
+    assert.deepStrictEqual(matcher().match("int x = 5 * y; TODO"), []);
+    assert.deepStrictEqual(matcher().match("array--; TODO"), []);
+    assert.deepStrictEqual(matcher().match("printf(\"%d TODO\", x);"), []);
+
+    // Real line-start comments still match.
+    assert.strictEqual(matcher().match("-- TODO sql comment")[0]?.tag, "TODO");
+    assert.strictEqual(matcher().match("  ; TODO asm comment")[0]?.tag, "TODO");
+    assert.strictEqual(matcher().match("% TODO latex comment")[0]?.tag, "TODO");
+    assert.strictEqual(matcher().match("* TODO markdown-list-ish")[0]?.tag, "TODO");
+
+    // Anywhere markers still work mid-line.
+    assert.strictEqual(matcher().match("doStuff(); // TODO real comment")[0]?.tag, "TODO");
+  });
+
   test("when commentsOnly is off, matches tags anywhere", () => {
     const m = matcher(false, false).match("update the TODO list");
     assert.strictEqual(m.length, 1);

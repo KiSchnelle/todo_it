@@ -4,6 +4,12 @@ All notable changes to the Todo It extension are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **Scanner false positives** in markdown / loose code: the comment markers `*`, `--`, `;`, `%` now only match at line-start with whitespace after, so markdown bold (`**…TODO…**`), `5 * y; TODO`, decrement-style `--var`, and `%d` format specifiers no longer light up the tree. `//`, `#`, `<!--`, `/*` continue to match anywhere on a line.
+
+### Changed
+- **Publish workflow**: `darwin-x64` now builds on `macos-26-intel` (the current free Intel-Mac label) instead of the phased-out `macos-13` runner that queued indefinitely.
+
 ## [0.0.3] - 2026-06-23
 
 ### Added

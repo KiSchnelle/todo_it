@@ -14,8 +14,33 @@ function tagAlternation(tags: TagDefinition[]): string | undefined {
   return `\\b(${escaped.join("|")})\\b`;
 }
 
+// Markers that are *only* line-comment starts (not code that can appear mid-line):
+//   `*` (JSDoc continuation), `--` (SQL/Haskell), `;` (asm/lisp/ini), `%` (LaTeX/Erlang).
+// We require these at line-start AND followed by whitespace so that markdown
+// bold (`**…**`), decrement (`--var`), statement-end (`x;`) and modulo (`5 % 3`)
+// don't masquerade as comments.
+const LINE_START_ONLY = new Set(["*", "--", ";", "%"]);
+
 function markerGroup(markers: string[]): string {
-  return `(?:${markers.map(escapeRegExp).join("|")})`;
+  const anchored: string[] = [];
+  const anywhere: string[] = [];
+  for (const m of markers) {
+    if (!m) {
+      continue;
+    }
+    (LINE_START_ONLY.has(m) ? anchored : anywhere).push(escapeRegExp(m));
+  }
+  const alts: string[] = [];
+  if (anchored.length > 0) {
+    alts.push(`^[\\t ]*(?:${anchored.join("|")})\\s`);
+  }
+  if (anywhere.length > 0) {
+    alts.push(`(?:${anywhere.join("|")})`);
+  }
+  if (alts.length === 0) {
+    return "\\b\\B"; // never matches
+  }
+  return `(?:${alts.join("|")})`;
 }
 
 /**
