@@ -1,6 +1,6 @@
 # Todo It
 
-**A modern, hybrid TODO manager for Visual Studio Code** — scan your code for comment tags _and_ keep your own checkable tasks, side by side in one sidebar.
+**A modern, maintained alternative to Todo Tree for Visual Studio Code.** Find `TODO`, `FIXME`, `HACK`, `BUG`, and `NOTE` comment tags across your workspace, highlight them in the editor, and manage your own checkable **tasks** (with priority, due dates, and notes) — all in one sidebar.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/KiSchnelle/todo_it/ci.yml?branch=main&label=CI&logo=github)](https://github.com/KiSchnelle/todo_it/actions/workflows/ci.yml)
 [![Version](https://vsmarketplacebadges.dev/version-short/KiSchnelle.todo-it.svg)](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it)

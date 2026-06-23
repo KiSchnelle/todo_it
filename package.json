@@ -1,7 +1,7 @@
 {
   "name": "todo-it",
   "displayName": "Todo It",
-  "description": "A modern hybrid TODO manager: scan your code for comment tags (TODO/FIXME/…) and keep your own checkable tasks, all in one view.",
+  "description": "Find TODO, FIXME, HACK, BUG, NOTE comment tags in your code and manage your own checkable tasks with priority, due dates, and notes — a modern, maintained alternative to Todo Tree.",
   "version": "0.0.2",
   "license": "MIT",
   "publisher": "KiSchnelle",
@@ -23,13 +23,23 @@
   ],
   "keywords": [
     "todo",
+    "todo tree",
+    "todo highlight",
+    "todo tree alternative",
     "fixme",
     "tasks",
-    "todo tree",
-    "comments"
+    "task list",
+    "task manager",
+    "comments",
+    "code annotations",
+    "productivity"
   ],
   "main": "./dist/extension.js",
   "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#2563EB",
+    "theme": "dark"
+  },
   "activationEvents": [
     "onStartupFinished"
   ],
