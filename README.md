@@ -54,7 +54,7 @@ TODO IT
 
 ## Getting started
 
-1. Install **Todo It** from the Marketplace (or run `Extensions: Install from VSIX…`).
+1. Install **Todo It** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=KiSchnelle.todo-it) or [Open VSX](https://open-vsx.org/extension/KiSchnelle/todo-it) (works in VSCodium, Gitpod, code-server, Cursor…). Or run `Extensions: Install from VSIX…`.
 2. Open the **Todo It** view from the Activity Bar (the checklist icon).
 3. The **Found in Code** section fills in automatically from your workspace; click any item to jump to it.
 4. Add your own tasks with the **`+`** button (or `Todo It: Add Task` from the Command Palette).
