@@ -1,0 +1,31 @@
+version: 2
+
+updates:
+  # Keep action SHAs current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # npm dependencies, grouped to reduce PR noise.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      types:
+        patterns: ["@types/*"]
+      eslint:
+        patterns: ["eslint", "typescript-eslint", "@typescript-eslint/*"]
+      dev-deps:
+        dependency-type: development
+    ignore:
+      # @types/node must match the VS Code 1.120 runtime (Node 22) — don't auto-bump majors.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # @types/vscode is intentionally pinned to the engines.vscode floor.
+      - dependency-name: "@types/vscode"

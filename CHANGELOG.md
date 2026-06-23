@@ -4,6 +4,13 @@ All notable changes to the Todo It extension are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Publishing is now manual via GitHub Releases** — the workflow triggers on `release: published` (draft a release in the UI, click "Publish release" to ship); `workflow_dispatch` is kept as an escape hatch.
+- **All GitHub Actions pinned to commit SHAs** (with version comments) for supply-chain safety; jobs declare least-privilege `permissions` and per-workflow `concurrency`.
+- **Dependabot enabled** for both `github-actions` and `npm` ecosystems, with sensible groupings and ignore rules for the deliberately-pinned `@types/node` and `@types/vscode`.
+
+## [0.0.2] - 2026-06-23
+
 ### Added
 - **Hybrid sidebar view** with two sections: "My Tasks" (manual tasks) and "Found in Code" (scanned comment tags).
 - **Comment-tag scanner** powered by ripgrep: configurable tags (TODO, FIXME, HACK, BUG, NOTE, XXX by default), include/exclude globs, `.gitignore` support, and a result cap.
