@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
 import { Configuration } from "../config/configuration";
-import { TagMatch, TreeNode } from "../models/types";
+import { ManualTask, TagMatch, TreeNode } from "../models/types";
 import { ScanStore } from "../scanner/scanStore";
+import { expandToAncestors, taskMatchesFilter } from "../tasks/filter";
 import { sortTasks } from "../tasks/sort";
 import { TaskStore } from "../tasks/taskStore";
 import { folderByKey, getFolders, isMultiRoot } from "../workspace/folders";
 import { groupScanned, matchNodes } from "./grouping";
+import { buildMatchTooltip } from "./matchTooltip";
 import { toTreeItem } from "./nodes";
 
 export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
@@ -49,14 +51,6 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     return undefined;
   }
 
-  private taskMatchesFilter(title: string, note: string | undefined): boolean {
-    if (!this.filter) {
-      return true;
-    }
-    const f = this.filter.toLowerCase();
-    return title.toLowerCase().includes(f) || (note?.toLowerCase().includes(f) ?? false);
-  }
-
   private scanMatchesFilter(m: TagMatch): boolean {
     if (!this.filter) {
       return true;
@@ -72,6 +66,20 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
   getTreeItem(node: TreeNode): vscode.TreeItem {
     return toTreeItem(node);
+  }
+
+  async resolveTreeItem(
+    item: vscode.TreeItem,
+    node: TreeNode,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.TreeItem> {
+    if (node.kind === "match") {
+      const tooltip = await buildMatchTooltip(node.match);
+      if (!token.isCancellationRequested) {
+        item.tooltip = tooltip;
+      }
+    }
+    return item;
   }
 
   async getChildren(node?: TreeNode): Promise<TreeNode[]> {
@@ -90,6 +98,10 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
       case "taskFolder": {
         const folder = folderByKey(node.folderUri);
         return folder ? this.taskNodes(folder) : [];
+      }
+      case "task": {
+        const folder = folderByKey(node.folderUri);
+        return folder ? this.taskChildrenOf(folder, node.task.id) : [];
       }
       case "scanFolder":
         return this.groupedChildren(this.matchesForFolder(node.folderUri));
@@ -122,16 +134,64 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   }
 
   private async taskNodes(folder: vscode.WorkspaceFolder): Promise<TreeNode[]> {
-    const all = sortTasks(await this.taskStore.getTasks(folder), this.config.all.taskSort);
-    const tasks = all.filter((t) => this.taskMatchesFilter(t.title, t.note));
+    const visible = await this.visibleTasks(folder);
     const folderUri = folder.uri.toString();
-    const nodes: TreeNode[] = tasks.map((task) => ({ kind: "task" as const, task, folderUri }));
+    const ids = new Set(visible.map((t) => t.id));
+    // Tasks whose parent isn't in this folder's visible set (deleted or filtered out)
+    // are surfaced at top level so they remain reachable.
+    const isTopLevel = (t: ManualTask): boolean => !t.parentId || !ids.has(t.parentId);
+    const childrenOf = (parentId: string): ManualTask[] =>
+      visible.filter((t) => t.parentId === parentId);
+    const nodes: TreeNode[] = visible.filter(isTopLevel).map((task) => ({
+      kind: "task" as const,
+      task,
+      folderUri,
+      hasChildren: childrenOf(task.id).length > 0,
+    }));
     // The quick-add row is hidden while a filter is active — filtering is for finding existing
     // things, and a "+ Add task…" row that always matches would be misleading.
     if (!this.filter) {
       nodes.unshift({ kind: "quickAdd", folderUri });
+    } else if (nodes.length === 0) {
+      nodes.push({
+        kind: "emptyHint",
+        id: `noTasks:${folderUri}`,
+        label: `No tasks matching “${this.filter}”`,
+        tooltip: "Clear the filter from the view title to see all your tasks.",
+      });
     }
     return nodes;
+  }
+
+  private async taskChildrenOf(
+    folder: vscode.WorkspaceFolder,
+    parentId: string,
+  ): Promise<TreeNode[]> {
+    const visible = await this.visibleTasks(folder);
+    const folderUri = folder.uri.toString();
+    const childrenOf = (id: string): ManualTask[] => visible.filter((t) => t.parentId === id);
+    return childrenOf(parentId).map((task) => ({
+      kind: "task" as const,
+      task,
+      folderUri,
+      hasChildren: childrenOf(task.id).length > 0,
+    }));
+  }
+
+  /**
+   * Loaded + sorted tasks for the folder, with the filter applied. Filtered-out
+   * tasks whose descendants match are still included, so a hit deep in the tree
+   * stays reachable through its parents.
+   */
+  private async visibleTasks(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {
+    const all = sortTasks(await this.taskStore.getTasks(folder), this.config.all.taskSort);
+    if (!this.filter) {
+      return all;
+    }
+    const lower = this.filter.toLowerCase();
+    const direct = all.filter((t) => taskMatchesFilter(t, lower)).map((t) => t.id);
+    const visible = expandToAncestors(all, direct);
+    return all.filter((t) => visible.has(t.id));
   }
 
   // ----- Scanned section -----
@@ -142,15 +202,34 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
       return this.groupedChildren(this.matchesForFolder(undefined));
     }
     if (isMultiRoot()) {
-      return folders
+      const populated = folders
         .filter((folder) => this.matchesForFolder(folder.uri.toString()).length > 0)
-        .map((folder) => ({
-          kind: "scanFolder",
-          folderUri: folder.uri.toString(),
-          label: folder.name,
-        }));
+        .map(
+          (folder) =>
+            ({
+              kind: "scanFolder",
+              folderUri: folder.uri.toString(),
+              label: folder.name,
+            }) as TreeNode,
+        );
+      return populated.length > 0 ? populated : [this.emptyScanHint()];
     }
-    return this.groupedChildren(this.matchesForFolder(folders[0].uri.toString()));
+    const children = this.groupedChildren(this.matchesForFolder(folders[0].uri.toString()));
+    return children.length > 0 ? children : [this.emptyScanHint()];
+  }
+
+  /** Hint shown under "Found in Code" when the scan has produced zero matches. */
+  private emptyScanHint(): TreeNode {
+    return {
+      kind: "emptyHint",
+      id: "noScannedMatches",
+      label: this.filter
+        ? `No matches for “${this.filter}”`
+        : "No TODO comments found — add // TODO:, # FIXME:, etc. to any file",
+      tooltip: this.filter
+        ? "Clear the filter from the view title to see all results."
+        : "The scanner ignores prose and strings — only comments are checked. Configure tags in settings.",
+    };
   }
 
   private matchesForFolder(folderUri: string | undefined): TagMatch[] {

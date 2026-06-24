@@ -4,6 +4,8 @@
 //   1. [ ] task
 // Only unchecked boxes are surfaced — checked boxes are already "done".
 const MD_TASK = /^[\t ]*(?:[-*+]|\d+\.)\s+\[ \]\s+(\S.*?)\s*$/;
+/** Matches the "[ ]" position on a markdown task line (capture 1 = the prefix before it). */
+export const MD_TASK_CHECKBOX = /^([\t ]*(?:[-*+]|\d+\.)\s+)\[ \]/;
 
 export const MD_TASK_TAG = "MD-TASK";
 

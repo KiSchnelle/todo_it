@@ -67,4 +67,18 @@ suite("scanStore", () => {
     store.replaceFile(result("u2", "f1", 1));
     assert.strictEqual(count, 2);
   });
+
+  test("allMatches() cache is invalidated when data changes", () => {
+    const store = new ScanStore();
+    store.replaceFile(result("u1", "f1", 2));
+    const first = store.allMatches();
+    assert.strictEqual(first.length, 2);
+    // Same reference on a repeat call — the cache should stick.
+    assert.strictEqual(store.allMatches(), first);
+    // Mutating the store invalidates the cache.
+    store.replaceFile(result("u2", "f1", 3));
+    const second = store.allMatches();
+    assert.notStrictEqual(second, first);
+    assert.strictEqual(second.length, 5);
+  });
 });

@@ -90,4 +90,22 @@ suite("applyReorder", () => {
     applyReorder(t, ["a"], "does-not-exist");
     assert.deepStrictEqual(ids(t), ["b", "a"]);
   });
+
+  test("operates only on the array it's given — siblings of other parents are untouched", () => {
+    // Two sibling lists: parent P1's children and parent P2's children. Reordering
+    // P1's siblings must not touch P2's order field, even though they share id space.
+    const p1Children: ManualTask[] = [
+      { id: "a", title: "a", done: false, createdAt: 0, updatedAt: 0, order: 1, parentId: "P1" },
+      { id: "b", title: "b", done: false, createdAt: 0, updatedAt: 0, order: 2, parentId: "P1" },
+    ];
+    const p2Children: ManualTask[] = [
+      { id: "c", title: "c", done: false, createdAt: 0, updatedAt: 0, order: 99, parentId: "P2" },
+      { id: "d", title: "d", done: false, createdAt: 0, updatedAt: 0, order: 100, parentId: "P2" },
+    ];
+    applyReorder(p1Children, ["b"], "TOP");
+    assert.deepStrictEqual(ids(p1Children), ["b", "a"]);
+    // P2 siblings untouched.
+    assert.strictEqual(p2Children[0].order, 99);
+    assert.strictEqual(p2Children[1].order, 100);
+  });
 });

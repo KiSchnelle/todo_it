@@ -32,22 +32,25 @@ export class TaskDnDController implements vscode.TreeDragAndDropController<TreeN
       return;
     }
     const dragged = item.value as TreeNode[];
-    // Group dragged tasks by folder (defensive — usually all in one folder).
-    const byFolder = new Map<string, string[]>();
+    // Group dragged tasks by folder + parentId. Reorder only operates within a
+    // single sibling list; cross-parent drags are no-ops here.
+    type Bucket = { folderUri: string; parentId: string | undefined; ids: string[] };
+    const byBucket = new Map<string, Bucket>();
     for (const node of dragged) {
       if (node.kind !== "task") {
         continue;
       }
-      const list = byFolder.get(node.folderUri) ?? [];
-      list.push(node.task.id);
-      byFolder.set(node.folderUri, list);
+      const key = `${node.folderUri}|${node.task.parentId ?? ""}`;
+      const bucket = byBucket.get(key) ?? { folderUri: node.folderUri, parentId: node.task.parentId, ids: [] };
+      bucket.ids.push(node.task.id);
+      byBucket.set(key, bucket);
     }
-    for (const [folderUri, ids] of byFolder) {
+    for (const { folderUri, parentId, ids } of byBucket.values()) {
       const folder = folderByKey(folderUri);
       if (!folder) {
         continue;
       }
-      const where = resolveTarget(folderUri, target);
+      const where = resolveTarget(folderUri, parentId, target);
       if (where === null) {
         continue;
       }
@@ -56,21 +59,33 @@ export class TaskDnDController implements vscode.TreeDragAndDropController<TreeN
   }
 }
 
-function resolveTarget(folderUri: string, target: TreeNode | undefined): ReorderTarget | null {
+function sameParent(target: TreeNode, parentId: string | undefined): boolean {
+  return target.kind === "task" && target.task.parentId === parentId;
+}
+
+function resolveTarget(
+  folderUri: string,
+  parentId: string | undefined,
+  target: TreeNode | undefined,
+): ReorderTarget | null {
   if (!target) {
     return "END";
   }
   if (target.kind === "task") {
-    return target.folderUri === folderUri ? target.task.id : null;
+    if (target.folderUri !== folderUri) {
+      return null;
+    }
+    return sameParent(target, parentId) ? target.task.id : null;
   }
   if (target.kind === "quickAdd") {
-    return target.folderUri === folderUri ? "TOP" : null;
+    // The quick-add row only sits above the top-level list.
+    return target.folderUri === folderUri && parentId === undefined ? "TOP" : null;
   }
   if (target.kind === "taskFolder") {
-    return target.folderUri === folderUri ? "END" : null;
+    return target.folderUri === folderUri && parentId === undefined ? "END" : null;
   }
   if (target.kind === "section" && target.id === "tasks") {
-    return "END";
+    return parentId === undefined ? "END" : null;
   }
   return null;
 }

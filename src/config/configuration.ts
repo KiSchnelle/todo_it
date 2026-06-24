@@ -54,6 +54,8 @@ export class Configuration {
       taskSort: cfg.get<TaskSortMode>("tasks.sortBy", "manual"),
       statusBarEnabled: cfg.get<boolean>("statusBar.enabled", true),
       markdownTasksEnabled: cfg.get<boolean>("markdownTasks.enabled", true),
+      aiMaxFindings: cfg.get<number>("ai.maxFindings", 400),
+      aiContextLines: cfg.get<number>("ai.contextLines", 6),
     };
   }
 

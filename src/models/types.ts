@@ -30,6 +30,10 @@ export interface TodoItConfig {
   taskSort: TaskSortMode;
   statusBarEnabled: boolean;
   markdownTasksEnabled: boolean;
+  /** Maximum scanned todos sent to `AI: Summarize Found in Code`. */
+  aiMaxFindings: number;
+  /** ±N lines of surrounding source for AI prompts that need code context. */
+  aiContextLines: number;
 }
 
 // ---------- Scanned comment-tag results ----------
@@ -60,13 +64,17 @@ export interface ScannedFileResult {
 
 export type TaskPriority = "low" | "medium" | "high";
 
-/** Optional pointer from a manual task back to a scanned comment-tag in source. */
+/** A single source pointer attached to a manual task. */
 export interface TaskLink {
   uri: string;
   line: number;
   column?: number;
+  /** Scanned-tag name when this link came from "Track as Task". */
   tag?: string;
+  /** Snapshot of the source line at scan time — purely for tooltip context. */
   preview?: string;
+  /** Optional human-supplied label; falls back to the file path. */
+  label?: string;
 }
 
 export interface ManualTask {
@@ -76,9 +84,15 @@ export interface ManualTask {
   priority?: TaskPriority;
   dueDate?: string; // ISO date YYYY-MM-DD
   note?: string;
-  link?: TaskLink;
+  /** All linked source files for this task. Legacy `link` is migrated to `links[0]` at load time. */
+  links?: TaskLink[];
+  /** Parent task id; tasks without a parent are top-level. */
+  parentId?: string;
+  /** ISO date YYYY-MM-DD. Suppresses due-soon notifications until this date. */
+  snoozedUntil?: string;
   createdAt: number;
   updatedAt: number;
+  /** Order within the parent's sibling list. */
   order: number;
 }
 
@@ -92,9 +106,10 @@ export interface TaskFile {
 export type TreeNode =
   | { kind: "section"; id: "tasks" | "scanned"; label: string }
   | { kind: "taskFolder"; folderUri: string; label: string }
-  | { kind: "task"; task: ManualTask; folderUri: string }
+  | { kind: "task"; task: ManualTask; folderUri: string; hasChildren?: boolean }
   | { kind: "quickAdd"; folderUri: string }
   | { kind: "scanFolder"; folderUri: string; label: string }
   | { kind: "tagGroup"; tag: string; folderUri?: string; count?: number }
   | { kind: "fileGroup"; uri: string; folderUri: string; count?: number }
-  | { kind: "match"; match: TagMatch };
+  | { kind: "match"; match: TagMatch }
+  | { kind: "emptyHint"; id: string; label: string; tooltip?: string };

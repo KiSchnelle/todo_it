@@ -1,11 +1,18 @@
 import * as vscode from "vscode";
-import { ManualTask, TaskPriority } from "../models/types";
+import { ManualTask, TaskLink, TaskPriority } from "../models/types";
 import { TaskStore } from "../tasks/taskStore";
 import { parseDueDate } from "../util/date";
 
 type PanelMessage =
   | { type: "save"; title: string; priority: string; dueDate: string; note: string }
-  | { type: "openLink" };
+  | { type: "openLink"; index: number }
+  | { type: "removeLink"; index: number }
+  | { type: "addLink" };
+
+interface LinkView {
+  path: string;
+  label?: string;
+}
 
 function makeNonce(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -14,6 +21,13 @@ function makeNonce(): string {
     value += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return value;
+}
+
+function linkViews(links: TaskLink[] | undefined): LinkView[] {
+  return (links ?? []).map((l) => ({
+    path: `${vscode.workspace.asRelativePath(vscode.Uri.parse(l.uri))}:${l.line + 1}`,
+    label: l.label,
+  }));
 }
 
 /** A single, reusable "Task Details" webview for viewing and editing a task (incl. a large note field). */
@@ -50,17 +64,39 @@ export class TaskDetailPanel {
       undefined,
       this.disposables,
     );
+    // If the task is deleted (or its links change from elsewhere), reflect it
+    // here. Saving doesn't fire a self-close because the task still exists after
+    // an updateTask round-trip.
+    this.disposables.push(this.taskStore.onDidChange(() => void this.onStoreChanged()));
+  }
+
+  /**
+   * Reacts to external task-store changes:
+   *  - task deleted → dispose the panel so the user can't keep editing a ghost.
+   *  - task updated (e.g. link added/removed elsewhere, AI-set priority) → re-push
+   *    the links list. Title / priority / due / note stay editable; we don't
+   *    clobber the user's in-progress edits to those fields.
+   */
+  private async onStoreChanged(): Promise<void> {
+    if (!this.folder) {
+      return;
+    }
+    const tasks = await this.taskStore.getTasks(this.folder);
+    const task = tasks.find((t) => t.id === this.taskId);
+    if (!task) {
+      this.panel.dispose();
+      return;
+    }
+    void this.panel.webview.postMessage({
+      type: "linksChanged",
+      links: linkViews(task.links),
+    });
   }
 
   private load(folder: vscode.WorkspaceFolder, task: ManualTask): void {
     this.folder = folder;
     this.taskId = task.id;
     this.panel.title = task.title || "Task Details";
-    const link = task.link
-      ? {
-          path: `${vscode.workspace.asRelativePath(vscode.Uri.parse(task.link.uri))}:${task.link.line + 1}`,
-        }
-      : null;
     void this.panel.webview.postMessage({
       type: "load",
       task: {
@@ -68,7 +104,7 @@ export class TaskDetailPanel {
         priority: task.priority ?? "",
         dueDate: task.dueDate ?? "",
         note: task.note ?? "",
-        link,
+        links: linkViews(task.links),
       },
     });
   }
@@ -78,7 +114,26 @@ export class TaskDetailPanel {
       return;
     }
     if (message.type === "openLink") {
-      await this.openLink();
+      await this.openLink(message.index);
+      return;
+    }
+    if (message.type === "removeLink") {
+      await this.removeLink(message.index);
+      return;
+    }
+    if (message.type === "addLink") {
+      // Delegate to the same command the tree menu uses so behavior stays consistent.
+      const tasks = await this.taskStore.getTasks(this.folder);
+      const task = tasks.find((t) => t.id === this.taskId);
+      if (!task) {
+        return;
+      }
+      const folderUri = this.folder.uri.toString();
+      await vscode.commands.executeCommand("todoIt.addTaskLink", {
+        kind: "task",
+        task,
+        folderUri,
+      });
       return;
     }
     if (message.type !== "save") {
@@ -110,21 +165,46 @@ export class TaskDetailPanel {
     void this.panel.webview.postMessage({ type: "status", saved: true, dueDate: dueDate ?? "" });
   }
 
-  private async openLink(): Promise<void> {
+  private async openLink(index: number): Promise<void> {
     if (!this.folder) {
       return;
     }
     const tasks = await this.taskStore.getTasks(this.folder);
     const task = tasks.find((t) => t.id === this.taskId);
-    if (!task?.link) {
+    const link = task?.links?.[index];
+    if (!link) {
       return;
     }
-    const uri = vscode.Uri.parse(task.link.uri);
-    const pos = new vscode.Position(task.link.line, task.link.column ?? 0);
-    const doc = await vscode.workspace.openTextDocument(uri);
-    const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: false });
-    editor.selection = new vscode.Selection(pos, pos);
-    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    const uri = vscode.Uri.parse(link.uri);
+    const pos = new vscode.Position(link.line, link.column ?? 0);
+    try {
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: false });
+      editor.selection = new vscode.Selection(pos, pos);
+      editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    } catch {
+      const action = await vscode.window.showWarningMessage(
+        `Todo It: couldn't open ${vscode.workspace.asRelativePath(uri)} — the file may have been moved or deleted.`,
+        "Remove link",
+      );
+      if (action === "Remove link") {
+        await this.removeLink(index);
+      }
+    }
+  }
+
+  private async removeLink(index: number): Promise<void> {
+    if (!this.folder) {
+      return;
+    }
+    const tasks = await this.taskStore.getTasks(this.folder);
+    const task = tasks.find((t) => t.id === this.taskId);
+    if (!task?.links) {
+      return;
+    }
+    const remaining = task.links.filter((_, i) => i !== index);
+    await this.taskStore.updateTask(this.folder, this.taskId, { links: remaining });
+    // The links list refresh comes through onStoreChanged → linksChanged.
   }
 
   private dispose(): void {
@@ -169,14 +249,20 @@ export class TaskDetailPanel {
   #status.ok { color: var(--vscode-charts-green, #89d185); }
   #status.err { color: var(--vscode-errorForeground); }
   .hint { color: var(--vscode-descriptionForeground); font-size: 11px; margin-top: 4px; }
-  .link-row { display: flex; align-items: center; gap: 8px; }
+
+  .link-list { display: flex; flex-direction: column; gap: 6px; }
+  .link-row { display: flex; align-items: center; gap: 6px; }
   .link-row code {
     flex: 1; padding: 6px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family);
     background: var(--vscode-textBlockQuote-background); color: var(--vscode-textPreformat-foreground);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .link-row button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  .link-row button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); padding: 4px 10px; }
   .link-row button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .link-row button.danger { color: var(--vscode-errorForeground); }
+  #addLink { background: transparent; color: var(--vscode-textLink-foreground); padding: 4px 0; }
+  #addLink:hover { background: transparent; text-decoration: underline; }
+  #emptyLinks { color: var(--vscode-descriptionForeground); font-size: 12px; padding: 6px 0; font-style: italic; }
 </style>
 </head>
 <body>
@@ -197,13 +283,10 @@ export class TaskDetailPanel {
       <input id="due" type="text" placeholder="2026-06-01 or 2 weeks" />
     </div>
   </div>
-  <div id="linkRow" style="display:none">
-    <label>Linked source</label>
-    <div class="link-row">
-      <code id="linkPath" title=""></code>
-      <button id="openLink" type="button">Open</button>
-    </div>
-  </div>
+  <label>Linked sources</label>
+  <div id="linkList" class="link-list"></div>
+  <div id="emptyLinks" style="display:none">No linked files — add one to quick-open it from this task.</div>
+  <button id="addLink" type="button">+ Add link…</button>
   <label for="note">Note</label>
   <textarea id="note" placeholder="Add details…"></textarea>
   <div class="hint">Due date accepts an exact date (YYYY-MM-DD) or a relative one (tomorrow, 3 days, 2 weeks, 1 month).</div>
@@ -228,6 +311,38 @@ export class TaskDetailPanel {
         note: byId('note').value,
       });
     }
+    function applyLinks(links) {
+      const list = byId('linkList');
+      const empty = byId('emptyLinks');
+      // Wipe and rebuild — defensive, simple.
+      while (list.firstChild) { list.removeChild(list.firstChild); }
+      if (!links || links.length === 0) {
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      links.forEach((link, i) => {
+        const row = document.createElement('div');
+        row.className = 'link-row';
+        const code = document.createElement('code');
+        // textContent is XSS-safe — the path never reaches innerHTML.
+        code.textContent = link.label ? link.label + ' — ' + link.path : link.path;
+        code.title = link.path;
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.textContent = 'Open';
+        openBtn.addEventListener('click', () => vscode.postMessage({ type: 'openLink', index: i }));
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = 'Remove';
+        removeBtn.className = 'danger';
+        removeBtn.addEventListener('click', () => vscode.postMessage({ type: 'removeLink', index: i }));
+        row.appendChild(code);
+        row.appendChild(openBtn);
+        row.appendChild(removeBtn);
+        list.appendChild(row);
+      });
+    }
     window.addEventListener('message', (event) => {
       const msg = event.data;
       if (msg.type === 'load') {
@@ -235,16 +350,10 @@ export class TaskDetailPanel {
         byId('priority').value = msg.task.priority;
         byId('due').value = msg.task.dueDate;
         byId('note').value = msg.task.note;
-        const row = byId('linkRow');
-        if (msg.task.link) {
-          // textContent is XSS-safe — the path never reaches innerHTML.
-          byId('linkPath').textContent = msg.task.link.path;
-          byId('linkPath').title = msg.task.link.path;
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+        applyLinks(msg.task.links);
         setStatus('', false);
+      } else if (msg.type === 'linksChanged') {
+        applyLinks(msg.links);
       } else if (msg.type === 'status') {
         if (msg.error) {
           setStatus(msg.error, true);
@@ -255,7 +364,7 @@ export class TaskDetailPanel {
       }
     });
     byId('save').addEventListener('click', save);
-    byId('openLink').addEventListener('click', () => vscode.postMessage({ type: 'openLink' }));
+    byId('addLink').addEventListener('click', () => vscode.postMessage({ type: 'addLink' }));
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
     });

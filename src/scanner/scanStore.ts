@@ -9,6 +9,10 @@ export class ScanStore {
   private readonly byUri = new Map<string, ScannedFileResult>();
   private readonly listeners = new Set<() => void>();
   private _truncated = false;
+  // Caches invalidated on emit() — rebuilding both takes O(N matches) per render
+  // and grew noticeable on 5k-match workspaces. Cleared every time data changes.
+  private allCache: readonly ScannedFileResult[] | undefined;
+  private allMatchesCache: readonly TagMatch[] | undefined;
 
   onDidChange(listener: () => void): Unsubscribe {
     this.listeners.add(listener);
@@ -16,6 +20,8 @@ export class ScanStore {
   }
 
   private emit(): void {
+    this.allCache = undefined;
+    this.allMatchesCache = undefined;
     for (const listener of this.listeners) {
       listener();
     }
@@ -80,12 +86,21 @@ export class ScanStore {
     }
   }
 
-  all(): ScannedFileResult[] {
-    return [...this.byUri.values()];
+  // The cached arrays are frozen — callers must clone before any in-place
+  // sort/push. `Object.freeze` turns silent mutations into hard errors in strict
+  // mode, which is what runs in extension code.
+  all(): readonly ScannedFileResult[] {
+    if (!this.allCache) {
+      this.allCache = Object.freeze([...this.byUri.values()]);
+    }
+    return this.allCache;
   }
 
-  allMatches(): TagMatch[] {
-    return this.all().flatMap((r) => r.matches);
+  allMatches(): readonly TagMatch[] {
+    if (!this.allMatchesCache) {
+      this.allMatchesCache = Object.freeze(this.all().flatMap((r) => r.matches));
+    }
+    return this.allMatchesCache;
   }
 
   matchesForUri(uri: string): TagMatch[] {

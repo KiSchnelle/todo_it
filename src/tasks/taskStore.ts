@@ -10,7 +10,8 @@ export interface NewTaskInput {
   priority?: TaskPriority;
   dueDate?: string;
   note?: string;
-  link?: TaskLink;
+  links?: TaskLink[];
+  parentId?: string;
 }
 
 export interface TaskUpdate {
@@ -18,8 +19,9 @@ export interface TaskUpdate {
   priority?: TaskPriority;
   dueDate?: string;
   note?: string;
-  link?: TaskLink;
+  links?: TaskLink[];
   done?: boolean;
+  snoozedUntil?: string;
 }
 
 function compareTasks(a: ManualTask, b: ManualTask): number {
@@ -66,6 +68,7 @@ export class TaskStore {
   async addTask(folder: vscode.WorkspaceFolder, input: NewTaskInput): Promise<ManualTask> {
     const tasks = await this.ensureLoaded(folder);
     const now = Date.now();
+    const siblings = tasks.filter((t) => t.parentId === input.parentId);
     const task: ManualTask = {
       id: newId(),
       title: input.title,
@@ -73,14 +76,73 @@ export class TaskStore {
       priority: input.priority,
       dueDate: input.dueDate,
       note: input.note,
-      link: input.link,
+      links: input.links && input.links.length > 0 ? [...input.links] : undefined,
+      parentId: input.parentId,
       createdAt: now,
       updatedAt: now,
-      order: tasks.reduce((max, t) => Math.max(max, t.order), 0) + 1,
+      order: siblings.reduce((max, t) => Math.max(max, t.order), 0) + 1,
     };
     tasks.push(task);
     await this.persist(folder, tasks);
     return task;
+  }
+
+  /** Collect all descendants (children, grandchildren, …) of `parentId`. Excludes the parent itself. */
+  collectDescendants(tasks: ManualTask[], parentId: string): ManualTask[] {
+    const byParent = new Map<string, ManualTask[]>();
+    for (const t of tasks) {
+      const key = t.parentId ?? "";
+      const list = byParent.get(key);
+      if (list) {
+        list.push(t);
+      } else {
+        byParent.set(key, [t]);
+      }
+    }
+    const out: ManualTask[] = [];
+    const queue: string[] = [parentId];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      const children = byParent.get(id) ?? [];
+      for (const child of children) {
+        out.push(child);
+        queue.push(child.id);
+      }
+    }
+    return out;
+  }
+
+  async descendantsOf(folder: vscode.WorkspaceFolder, parentId: string): Promise<ManualTask[]> {
+    return this.collectDescendants(await this.ensureLoaded(folder), parentId);
+  }
+
+  /** Re-parent a task. Pass `undefined` to move it to the top level. Places it at the end of the new sibling list. */
+  async moveTask(
+    folder: vscode.WorkspaceFolder,
+    id: string,
+    newParentId: string | undefined,
+  ): Promise<void> {
+    const tasks = await this.ensureLoaded(folder);
+    const task = tasks.find((t) => t.id === id);
+    if (!task) {
+      return;
+    }
+    if (task.parentId === newParentId) {
+      return;
+    }
+    // Block re-parenting onto self or a descendant — that would create a cycle.
+    if (newParentId === id) {
+      return;
+    }
+    const descendants = this.collectDescendants(tasks, id);
+    if (descendants.some((d) => d.id === newParentId)) {
+      return;
+    }
+    task.parentId = newParentId;
+    const siblings = tasks.filter((t) => t.parentId === newParentId && t.id !== id);
+    task.order = siblings.reduce((max, t) => Math.max(max, t.order), 0) + 1;
+    task.updatedAt = Date.now();
+    await this.persist(folder, tasks);
   }
 
   async updateTask(folder: vscode.WorkspaceFolder, id: string, update: TaskUpdate): Promise<void> {
@@ -105,33 +167,75 @@ export class TaskStore {
     if ("note" in update) {
       task.note = update.note;
     }
-    if ("link" in update) {
-      task.link = update.link;
+    if ("links" in update) {
+      task.links = update.links && update.links.length > 0 ? [...update.links] : undefined;
+    }
+    if ("snoozedUntil" in update) {
+      task.snoozedUntil = update.snoozedUntil;
     }
     task.updatedAt = Date.now();
     await this.persist(folder, tasks);
   }
 
+  /** Toggle done. Cascades the same state to all descendant tasks. */
   async setDone(folder: vscode.WorkspaceFolder, id: string, done: boolean): Promise<void> {
-    await this.updateTask(folder, id, { done });
-  }
-
-  async removeTask(folder: vscode.WorkspaceFolder, id: string): Promise<void> {
     const tasks = await this.ensureLoaded(folder);
-    const next = tasks.filter((t) => t.id !== id);
-    if (next.length === tasks.length) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) {
       return;
     }
+    const now = Date.now();
+    if (task.done !== done) {
+      task.done = done;
+      task.updatedAt = now;
+    }
+    for (const child of this.collectDescendants(tasks, id)) {
+      if (child.done !== done) {
+        child.done = done;
+        child.updatedAt = now;
+      }
+    }
+    await this.persist(folder, tasks);
+  }
+
+  /** Remove a task and all its descendants. */
+  async removeTask(folder: vscode.WorkspaceFolder, id: string): Promise<void> {
+    const tasks = await this.ensureLoaded(folder);
+    const target = tasks.find((t) => t.id === id);
+    if (!target) {
+      return;
+    }
+    const remove = new Set<string>([id]);
+    for (const d of this.collectDescendants(tasks, id)) {
+      remove.add(d.id);
+    }
+    const next = tasks.filter((t) => !remove.has(t.id));
     await this.persist(folder, next);
   }
 
+  /**
+   * Reorders dragged tasks within their parent's sibling list. Cross-parent
+   * drags are no-ops here — callers should validate same-parent first (or use
+   * {@link moveTask} to re-parent first). An orphaned task (its parent was
+   * deleted) is treated as top-level for ordering purposes.
+   */
   async reorder(
     folder: vscode.WorkspaceFolder,
     draggedIds: string[],
     target: ReorderTarget,
   ): Promise<void> {
     const tasks = await this.ensureLoaded(folder);
-    applyReorder(tasks, draggedIds, target);
+    const first = tasks.find((t) => draggedIds.includes(t.id));
+    if (!first) {
+      return;
+    }
+    const ids = new Set(tasks.map((t) => t.id));
+    const parentId = first.parentId && ids.has(first.parentId) ? first.parentId : undefined;
+    const siblings = tasks.filter((t) => {
+      const effective = t.parentId && ids.has(t.parentId) ? t.parentId : undefined;
+      return effective === parentId;
+    });
+    applyReorder(siblings, draggedIds, target);
     await this.persist(folder, tasks);
   }
 

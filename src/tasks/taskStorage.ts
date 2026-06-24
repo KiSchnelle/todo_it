@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ManualTask, TaskFile, TasksStorageMode } from "../models/types";
+import { ManualTask, TaskFile, TaskLink, TasksStorageMode } from "../models/types";
 import { TASKS_FILE, TASKS_FILE_LOCAL, TASKS_SCHEMA_VERSION } from "../config/defaults";
 import { Logger } from "../util/logger";
 
@@ -15,23 +15,60 @@ function isFileNotFound(err: unknown): boolean {
   );
 }
 
+function isValidLink(value: unknown): value is TaskLink {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const o = value as Record<string, unknown>;
+  return typeof o.uri === "string" && typeof o.line === "number";
+}
+
 function isValidTask(value: unknown): value is ManualTask {
   if (typeof value !== "object" || value === null) {
     return false;
   }
   const o = value as Record<string, unknown>;
-  return (
+  const okScalars =
     typeof o.id === "string" &&
     typeof o.title === "string" &&
     typeof o.done === "boolean" &&
     typeof o.createdAt === "number" &&
     typeof o.updatedAt === "number" &&
-    typeof o.order === "number"
-  );
+    typeof o.order === "number";
+  if (!okScalars) {
+    return false;
+  }
+  // If `links` is present but malformed (e.g. a string), reject — defensive
+  // against a hand-edited or corrupted todos.json.
+  if (o.links !== undefined && (!Array.isArray(o.links) || !o.links.every(isValidLink))) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Normalize a raw task into the current shape. Folds the legacy v0.0.3
+ * `link: TaskLink` field into `links: [link]`; this runs at read time rather
+ * than via a one-shot install migration so the adapter also catches workspaces
+ * opened later with legacy `todos.json` files (git stashes, fresh clones,
+ * colleagues' commits). Returns a fresh object — does not mutate `raw`.
+ */
+function rehydrateTask(raw: ManualTask): ManualTask {
+  const withLegacy = raw as ManualTask & { link?: TaskLink };
+  if (withLegacy.link && !withLegacy.links) {
+    const { link, ...rest } = withLegacy;
+    return { ...rest, links: [link] };
+  }
+  if (withLegacy.link) {
+    const { link: _legacy, ...rest } = withLegacy;
+    return rest;
+  }
+  return raw;
 }
 
 /** Emit keys in a stable order and drop empty optionals to keep diffs small. */
 function normalizeTask(t: ManualTask): ManualTask {
+  const links = t.links?.filter(Boolean) ?? [];
   return {
     id: t.id,
     title: t.title,
@@ -39,7 +76,9 @@ function normalizeTask(t: ManualTask): ManualTask {
     ...(t.priority ? { priority: t.priority } : {}),
     ...(t.dueDate ? { dueDate: t.dueDate } : {}),
     ...(t.note ? { note: t.note } : {}),
-    ...(t.link ? { link: t.link } : {}),
+    ...(links.length > 0 ? { links } : {}),
+    ...(t.parentId ? { parentId: t.parentId } : {}),
+    ...(t.snoozedUntil ? { snoozedUntil: t.snoozedUntil } : {}),
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     order: t.order,
@@ -66,7 +105,7 @@ export class FileTaskStorage implements TaskStorage {
         this.logger.warn(`Ignoring malformed ${this.relPath} in "${folder.name}".`);
         return [];
       }
-      return parsed.tasks.filter(isValidTask);
+      return parsed.tasks.filter(isValidTask).map(rehydrateTask);
     } catch (err) {
       if (isFileNotFound(err)) {
         return [];
@@ -136,11 +175,14 @@ export class WorkspaceStateTaskStorage implements TaskStorage {
   }
 
   async load(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {
-    return this.context.workspaceState.get<ManualTask[]>(this.key(folder), []);
+    const tasks = this.context.workspaceState.get<ManualTask[]>(this.key(folder), []);
+    return tasks.map(rehydrateTask);
   }
 
   async save(folder: vscode.WorkspaceFolder, tasks: ManualTask[]): Promise<void> {
-    await this.context.workspaceState.update(this.key(folder), tasks);
+    // Normalize so workspaceState matches the on-disk shape — no `link: undefined`
+    // entries leaking through and no stable-order surprises across upgrades.
+    await this.context.workspaceState.update(this.key(folder), tasks.map(normalizeTask));
   }
 }
 

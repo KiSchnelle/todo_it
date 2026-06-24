@@ -1,9 +1,7 @@
 import * as vscode from "vscode";
 import { ManualTask, TagMatch, TaskPriority, TreeNode } from "../models/types";
-
-function shortLink(uri: string, line: number): string {
-  return `${vscode.workspace.asRelativePath(vscode.Uri.parse(uri))}:${line + 1}`;
-}
+import { MD_TASK_TAG } from "../scanner/markdownTasks";
+import { relPathLine } from "../util/uri";
 
 function priorityIcon(priority: TaskPriority): vscode.ThemeIcon {
   switch (priority) {
@@ -32,13 +30,25 @@ function folderItem(folderUri: string, label: string, contextValue: string): vsc
   return item;
 }
 
-function taskItem(task: ManualTask, folderUri: string): vscode.TreeItem {
+function taskItem(task: ManualTask, folderUri: string, hasChildren: boolean): vscode.TreeItem {
   const hasNote = !!task.note?.trim();
-  const item = new vscode.TreeItem(task.title, vscode.TreeItemCollapsibleState.None);
+  const links = task.links ?? [];
+  const item = new vscode.TreeItem(
+    task.title,
+    hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+  );
   item.id = `task:${folderUri}:${task.id}`;
-  // Space-separated "tokens" so `viewItem =~ /\\btask\\b/` matches both forms
-  // and `viewItem =~ /\\blinked\\b/` matches only linked tasks.
-  item.contextValue = task.link ? "task linked" : "task";
+  // Space-separated "tokens" so `viewItem =~ /\\btask\\b/` matches both forms,
+  // `viewItem =~ /\\blinked\\b/` matches linked tasks, and
+  // `viewItem =~ /\\bchild\\b/` matches subtasks (have a parentId).
+  const tokens = ["task"];
+  if (links.length > 0) {
+    tokens.push("linked");
+  }
+  if (task.parentId) {
+    tokens.push("child");
+  }
+  item.contextValue = tokens.join(" ");
   item.checkboxState = task.done
     ? vscode.TreeItemCheckboxState.Checked
     : vscode.TreeItemCheckboxState.Unchecked;
@@ -53,8 +63,10 @@ function taskItem(task: ManualTask, folderUri: string): vscode.TreeItem {
   if (hasNote) {
     bits.push("📝");
   }
-  if (task.link) {
-    bits.push(`🔗 ${shortLink(task.link.uri, task.link.line)}`);
+  if (links.length === 1) {
+    bits.push(`🔗 ${relPathLine(links[0].uri, links[0].line)}`);
+  } else if (links.length > 1) {
+    bits.push(`🔗 ${relPathLine(links[0].uri, links[0].line)} +${links.length - 1} more`);
   }
   item.description = bits.length > 0 ? bits.join(" · ") : undefined;
   if (task.priority) {
@@ -69,8 +81,11 @@ function taskItem(task: ManualTask, folderUri: string): vscode.TreeItem {
   if (task.dueDate) {
     tooltip.push(`Due: ${task.dueDate}`);
   }
-  if (task.link) {
-    tooltip.push(`Linked source: ${shortLink(task.link.uri, task.link.line)}`);
+  if (links.length > 0) {
+    tooltip.push("Linked sources:");
+    for (const l of links) {
+      tooltip.push(`  · ${relPathLine(l.uri, l.line)}`);
+    }
   }
   if (hasNote) {
     tooltip.push(`\nNote:\n${task.note}`);
@@ -81,7 +96,7 @@ function taskItem(task: ManualTask, folderUri: string): vscode.TreeItem {
   item.command = {
     command: "todoIt.editTask",
     title: "Open Task",
-    arguments: [{ kind: "task", task, folderUri } satisfies TreeNode],
+    arguments: [{ kind: "task", task, folderUri, hasChildren } satisfies TreeNode],
   };
   return item;
 }
@@ -101,10 +116,12 @@ function quickAddItem(node: Extract<TreeNode, { kind: "quickAdd" }>): vscode.Tre
 }
 
 function tagGroupItem(node: Extract<TreeNode, { kind: "tagGroup" }>): vscode.TreeItem {
-  const item = new vscode.TreeItem(node.tag, vscode.TreeItemCollapsibleState.Collapsed);
+  const isMd = node.tag === MD_TASK_TAG;
+  const label = isMd ? "Markdown checklist" : node.tag;
+  const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
   item.id = `tagGroup:${node.folderUri ?? ""}:${node.tag}`;
   item.contextValue = "tagGroup";
-  item.iconPath = new vscode.ThemeIcon("tag");
+  item.iconPath = new vscode.ThemeIcon(isMd ? "checklist" : "tag");
   if (node.count !== undefined) {
     item.description = String(node.count);
   }
@@ -127,16 +144,32 @@ function matchItem(match: TagMatch): vscode.TreeItem {
   const label = match.text.length > 0 ? match.text : match.lineText.trim();
   const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
   item.id = match.matchId;
-  item.contextValue = "match";
-  const uri = vscode.Uri.parse(match.uri);
-  item.description = `${vscode.workspace.asRelativePath(uri)}:${match.line + 1}`;
-  item.tooltip = `${match.tag}: ${match.lineText.trim()}`;
-  item.iconPath = new vscode.ThemeIcon("circle-filled");
+  const isMd = match.tag === MD_TASK_TAG;
+  // Space-separated tokens so menu `when` clauses can target markdown tasks specifically.
+  item.contextValue = isMd ? "match mdTask" : "match";
+  item.description = relPathLine(match.uri, match.line);
+  // tooltip is set lazily by TodoTreeProvider.resolveTreeItem (with a context preview).
+  if (isMd) {
+    item.iconPath = new vscode.ThemeIcon("circle-large-outline");
+    // The check toggles `- [ ]` → `- [x]` in the source markdown file.
+    item.checkboxState = vscode.TreeItemCheckboxState.Unchecked;
+  } else {
+    item.iconPath = new vscode.ThemeIcon("circle-filled");
+  }
   item.command = {
     command: "todoIt.openMatch",
     title: "Open",
     arguments: [{ kind: "match", match } satisfies TreeNode],
   };
+  return item;
+}
+
+function emptyHintItem(node: Extract<TreeNode, { kind: "emptyHint" }>): vscode.TreeItem {
+  const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
+  item.id = `emptyHint:${node.id}`;
+  item.contextValue = "emptyHint";
+  item.iconPath = new vscode.ThemeIcon("info");
+  item.tooltip = node.tooltip;
   return item;
 }
 
@@ -147,7 +180,7 @@ export function toTreeItem(node: TreeNode): vscode.TreeItem {
     case "taskFolder":
       return folderItem(node.folderUri, node.label, "taskFolder");
     case "task":
-      return taskItem(node.task, node.folderUri);
+      return taskItem(node.task, node.folderUri, node.hasChildren ?? false);
     case "quickAdd":
       return quickAddItem(node);
     case "scanFolder":
@@ -158,5 +191,7 @@ export function toTreeItem(node: TreeNode): vscode.TreeItem {
       return fileGroupItem(node);
     case "match":
       return matchItem(node.match);
+    case "emptyHint":
+      return emptyHintItem(node);
   }
 }

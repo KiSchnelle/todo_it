@@ -21,6 +21,18 @@ suite("extension", () => {
       "todoIt.clearFilter",
       "todoIt.trackAsTask",
       "todoIt.openTaskLink",
+      "todoIt.addTaskLink",
+      "todoIt.removeTaskLink",
+      "todoIt.goToTodo",
+      "todoIt.addSubtask",
+      "todoIt.moveTask",
+      "todoIt.ai.summarizeTodos",
+      "todoIt.ai.suggestPriority",
+      "todoIt.ai.trackAsTask",
+      "todoIt.ai.explainMatch",
+      "todoIt.exportTasks",
+      "todoIt.setTaskPriority",
+      "todoIt.snoozeTask",
     ];
     for (const id of expected) {
       assert.ok(commands.includes(id), `missing command ${id}`);

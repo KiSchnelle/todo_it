@@ -1,8 +1,8 @@
 {
   "name": "todo-it",
   "displayName": "Todo It",
-  "description": "Find TODO, FIXME, HACK, BUG, NOTE comment tags in your code and manage your own checkable tasks with priority, due dates, and notes — a modern, maintained alternative to Todo Tree.",
-  "version": "0.0.3",
+  "description": "Hybrid TODO scanner + checkable task manager: subtasks, multi-file links, due-date reminders, markdown checklists, CodeLens, and an opt-in AI assist (Copilot or any installed Language Model provider). A modern, maintained Todo Tree alternative.",
+  "version": "0.1.0",
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",
@@ -24,14 +24,25 @@
   "keywords": [
     "todo",
     "todo tree",
-    "todo highlight",
     "todo tree alternative",
-    "fixme",
-    "tasks",
-    "task list",
+    "todo highlight",
+    "todo manager",
     "task manager",
-    "comments",
+    "task list",
+    "tasks",
+    "subtasks",
+    "checklist",
+    "markdown checklist",
+    "due dates",
+    "reminders",
+    "fixme",
     "code annotations",
+    "comments",
+    "code lens",
+    "ai",
+    "copilot",
+    "language model",
+    "chat participant",
     "productivity"
   ],
   "main": "./dist/extension.js",
@@ -78,6 +89,25 @@
         "view": "todoIt.view",
         "when": "workbenchState == empty",
         "contents": "Open a folder or workspace to scan for todos and manage your tasks.\n[Open Folder](command:vscode.openFolder)"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "todoIt.chat",
+        "fullName": "Todo It",
+        "name": "todo-it",
+        "description": "Ask questions about your TODOs and tasks (@todo-it /summarize, /overdue)",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "summarize",
+            "description": "Summarize all scanned TODOs by theme, flag urgent items"
+          },
+          {
+            "name": "overdue",
+            "description": "List tasks that are overdue or due today"
+          }
+        ]
       }
     ],
     "commands": [
@@ -171,6 +201,78 @@
         "title": "Open Linked Source",
         "category": "Todo It",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "todoIt.addTaskLink",
+        "title": "Add Linked Source…",
+        "category": "Todo It",
+        "icon": "$(link)"
+      },
+      {
+        "command": "todoIt.removeTaskLink",
+        "title": "Remove Linked Source…",
+        "category": "Todo It",
+        "icon": "$(unlink)"
+      },
+      {
+        "command": "todoIt.goToTodo",
+        "title": "Go to Todo…",
+        "category": "Todo It",
+        "icon": "$(search)"
+      },
+      {
+        "command": "todoIt.addSubtask",
+        "title": "Add Subtask",
+        "category": "Todo It",
+        "icon": "$(add)"
+      },
+      {
+        "command": "todoIt.moveTask",
+        "title": "Move Task Under…",
+        "category": "Todo It",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "todoIt.ai.summarizeTodos",
+        "title": "AI: Summarize Found in Code",
+        "category": "Todo It",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "todoIt.ai.suggestPriority",
+        "title": "AI: Suggest Priority",
+        "category": "Todo It",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "todoIt.ai.trackAsTask",
+        "title": "AI: Track as Task (Expanded)",
+        "category": "Todo It",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "todoIt.ai.explainMatch",
+        "title": "AI: Explain Todo",
+        "category": "Todo It",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "todoIt.exportTasks",
+        "title": "Export Tasks to Markdown…",
+        "category": "Todo It",
+        "icon": "$(export)"
+      },
+      {
+        "command": "todoIt.setTaskPriority",
+        "title": "Set Priority…",
+        "category": "Todo It",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "todoIt.snoozeTask",
+        "title": "Snooze…",
+        "category": "Todo It",
+        "icon": "$(clock)"
       }
     ],
     "menus": {
@@ -204,6 +306,16 @@
           "command": "todoIt.refresh",
           "when": "view == todoIt.view",
           "group": "navigation@99"
+        },
+        {
+          "command": "todoIt.ai.summarizeTodos",
+          "when": "view == todoIt.view",
+          "group": "9_ai@1"
+        },
+        {
+          "command": "todoIt.exportTasks",
+          "when": "view == todoIt.view",
+          "group": "9_ai@2"
         }
       ],
       "view/item/context": [
@@ -233,9 +345,29 @@
           "group": "1_modify@1"
         },
         {
-          "command": "todoIt.deleteTask",
+          "command": "todoIt.addSubtask",
           "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
           "group": "1_modify@2"
+        },
+        {
+          "command": "todoIt.moveTask",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "1_modify@3"
+        },
+        {
+          "command": "todoIt.setTaskPriority",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "1_modify@4"
+        },
+        {
+          "command": "todoIt.snoozeTask",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "1_modify@5"
+        },
+        {
+          "command": "todoIt.deleteTask",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "1_modify@6"
         },
         {
           "command": "todoIt.openTaskLink",
@@ -248,14 +380,39 @@
           "group": "1_modify@0"
         },
         {
+          "command": "todoIt.addTaskLink",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "2_links@1"
+        },
+        {
+          "command": "todoIt.removeTaskLink",
+          "when": "view == todoIt.view && viewItem =~ /\\blinked\\b/",
+          "group": "2_links@2"
+        },
+        {
           "command": "todoIt.trackAsTask",
-          "when": "view == todoIt.view && viewItem == match",
+          "when": "view == todoIt.view && viewItem =~ /\\bmatch\\b/",
           "group": "inline"
         },
         {
           "command": "todoIt.trackAsTask",
-          "when": "view == todoIt.view && viewItem == match",
-          "group": "1_modify"
+          "when": "view == todoIt.view && viewItem =~ /\\bmatch\\b/",
+          "group": "1_modify@1"
+        },
+        {
+          "command": "todoIt.ai.trackAsTask",
+          "when": "view == todoIt.view && viewItem =~ /\\bmatch\\b/",
+          "group": "1_modify@2"
+        },
+        {
+          "command": "todoIt.ai.explainMatch",
+          "when": "view == todoIt.view && viewItem =~ /\\bmatch\\b/",
+          "group": "1_modify@3"
+        },
+        {
+          "command": "todoIt.ai.suggestPriority",
+          "when": "view == todoIt.view && viewItem =~ /\\btask\\b/",
+          "group": "3_ai@1"
         }
       ],
       "commandPalette": [
@@ -281,6 +438,42 @@
         },
         {
           "command": "todoIt.openTaskLink",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.addTaskLink",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.removeTaskLink",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.addSubtask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.moveTask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.ai.suggestPriority",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.ai.trackAsTask",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.ai.explainMatch",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.setTaskPriority",
+          "when": "false"
+        },
+        {
+          "command": "todoIt.snoozeTask",
           "when": "false"
         }
       ]
@@ -433,6 +626,30 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight tags in the editor with gutter icons and styling."
+        },
+        "todoIt.codeLens.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a clickable CodeLens above each scanned tag in the editor (e.g. 'TODO: refactor · Track as Task'). Off by default — some find it noisy."
+        },
+        "todoIt.ai.maxFindings": {
+          "type": "number",
+          "default": 400,
+          "minimum": 10,
+          "maximum": 5000,
+          "markdownDescription": "Maximum number of scanned todos sent to the model by `AI: Summarize Found in Code`. Raise this if your provider has a large context window and you want a more complete summary; lower it to keep the prompt small."
+        },
+        "todoIt.ai.contextLines": {
+          "type": "number",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 50,
+          "markdownDescription": "Lines of surrounding source code (±N) sent as context to `AI: Suggest Priority`, `AI: Track as Task (Expanded)`, and `AI: Explain Todo`. Higher = better grounding, but a bigger prompt."
+        },
+        "todoIt.notifications.dueSoon": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show a VS Code notification when a task's due date arrives. Off by default — turn on if you want a gentle nudge. Each task is notified at most once per session; the dialog lets you *Open* the view or *Snooze 1 day*."
         },
         "todoIt.statusBar.enabled": {
           "type": "boolean",
