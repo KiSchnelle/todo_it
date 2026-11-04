@@ -109,9 +109,9 @@ jobs:
         run: npx vsce publish --skip-duplicate --packagePath vsix/*.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      # Open VSX failures (e.g. unverified namespace, transient outage) don't fail the run.
+      # Open VSX is the registry for Cursor, Antigravity, Windsurf/Devin Desktop, Kiro, Trae and
+      # VSCodium, so a failure here fails the run. Re-running is safe: both steps skip duplicates.
       - name: Publish to Open VSX
-        continue-on-error: true
         run: |
           for f in vsix/*.vsix; do
             npx ovsx publish "$f" --skip-duplicate
