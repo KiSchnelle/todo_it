@@ -1,7 +1,15 @@
 import * as assert from "node:assert";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { ManualTask, TagMatch } from "../../src/models/types";
 import {
+  AddTaskInput,
   clampLimit,
+  escapeMarkdown,
+  MAX_NOTE_LEN,
+  MAX_TITLE_LEN,
+  PRIORITIES,
+  TASK_STATUSES,
   filterMatches,
   filterTasks,
   isIsoDate,
@@ -128,5 +136,46 @@ suite("toolFormat: validation", () => {
     assert.ok(validateAddTask({ title: "x", priority: "urgent" as never }));
     assert.ok(validateAddTask({ title: "x", dueDate: "next week" }));
     assert.strictEqual(validateAddTask({ title: "x", priority: "high", dueDate: "2026-12-31" }), undefined);
+  });
+});
+
+suite("toolFormat: input hardening", () => {
+  test("validateAddTask rejects non-string note/parentId/folder", () => {
+    for (const key of ["note", "parentId", "folder"]) {
+      const bad = { title: "x", [key]: { a: 1 } } as unknown as AddTaskInput;
+      assert.ok(validateAddTask(bad), key);
+    }
+    assert.strictEqual(validateAddTask({ title: "x", note: "n", parentId: "p", folder: "f" }), undefined);
+  });
+
+  test("validateAddTask caps title and note length", () => {
+    assert.ok(validateAddTask({ title: "x".repeat(MAX_TITLE_LEN + 1) }));
+    assert.ok(validateAddTask({ title: "x", note: "n".repeat(MAX_NOTE_LEN + 1) }));
+  });
+
+  test("escapeMarkdown neutralises formatting, links and newlines", () => {
+    const out = escapeMarkdown("a** \n\n[Docs](https://evil.example)");
+    assert.ok(!out.includes("\n"));
+    assert.ok(out.includes("\\*\\*"));
+    assert.ok(out.includes("\\[Docs\\]\\("));
+  });
+
+  test("filters and renderTask tolerate non-string fields", () => {
+    const t = { id: "1", title: "t", done: false, note: 5 } as unknown as ManualTask;
+    assert.doesNotThrow(() => filterTasks([t], { query: 5 as unknown as string }, "2026-01-01"));
+    assert.doesNotThrow(() => renderTask(t, "2026-01-01"));
+  });
+
+  test("package.json tool schemas agree with TS constants", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../package.json"), "utf8"));
+    const tools = pkg.contributes.languageModelTools as {
+      name: string;
+      toolReferenceName: string;
+      inputSchema: { properties: Record<string, { enum?: string[] }> };
+    }[];
+    const byName = (n: string) => tools.find((t) => t.name === n)!;
+    assert.deepStrictEqual(byName("todoIt_listTasks").inputSchema.properties.status.enum, [...TASK_STATUSES]);
+    assert.deepStrictEqual(byName("todoIt_addTask").inputSchema.properties.priority.enum, [...PRIORITIES]);
+    assert.strictEqual(byName("todoIt_listTodos").toolReferenceName, "todoComments");
   });
 });

@@ -23,12 +23,13 @@ function fakeContext(): vscode.ExtensionContext {
     keys: () => [...state.keys()],
     get: <T,>(key: string, defaultValue?: T): T | undefined =>
       (state.has(key) ? (state.get(key) as T) : defaultValue),
-    update: async (key: string, value: unknown): Promise<void> => {
+    update: (key: string, value: unknown): Promise<void> => {
       if (value === undefined) {
         state.delete(key);
       } else {
         state.set(key, value);
       }
+      return Promise.resolve();
     },
   };
   return { workspaceState: memento } as unknown as vscode.ExtensionContext;

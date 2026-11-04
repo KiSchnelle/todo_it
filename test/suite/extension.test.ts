@@ -71,4 +71,28 @@ suite("extension", () => {
       .join("");
     assert.ok(text.length > 0);
   });
+
+  test("todoIt_addTask rejects an unknown parent and a non-string note", async () => {
+    const ext = vscode.extensions.getExtension("KiSchnelle.todo-it");
+    await ext?.activate();
+    const token = new vscode.CancellationTokenSource().token;
+    await assert.rejects(
+      Promise.resolve(
+        vscode.lm.invokeTool(
+          "todoIt_addTask",
+          { input: { title: "x", parentId: "nope" }, toolInvocationToken: undefined },
+          token,
+        ),
+      ),
+    );
+    await assert.rejects(
+      Promise.resolve(
+        vscode.lm.invokeTool(
+          "todoIt_addTask",
+          { input: { title: "x", note: { a: 1 } }, toolInvocationToken: undefined },
+          token,
+        ),
+      ),
+    );
+  });
 });

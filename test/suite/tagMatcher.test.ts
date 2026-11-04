@@ -83,3 +83,16 @@ suite("tagMatcher", () => {
     assert.strictEqual(escapeRegExp("a.b*c"), "a\\.b\\*c");
   });
 });
+
+suite("tag boundaries", () => {
+  test("tags with non-word edge characters match", () => {
+    const m = new TagMatcher([{ tag: "@todo" } as never, { tag: "TODO!" } as never], false, false, []);
+    assert.strictEqual(m.match("// @todo fix").length, 1);
+    assert.strictEqual(m.match("// TODO! now").length, 1);
+  });
+
+  test("ripgrep pattern uses ASCII word boundaries", () => {
+    const src = tagPatternSource([{ tag: "TODO" } as never], false, []);
+    assert.ok(src.includes("(?-u:\\b)TODO(?-u:\\b)"));
+  });
+});

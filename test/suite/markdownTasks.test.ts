@@ -52,3 +52,14 @@ suite("MD_TASK_TAG", () => {
     assert.strictEqual(MD_TASK_TAG, "MD-TASK");
   });
 });
+
+suite("matchMarkdownTask performance", () => {
+  test("long whitespace runs do not backtrack quadratically", () => {
+    const line = "- [ ] a" + " ".repeat(100000) + "x";
+    const t0 = Date.now();
+    const m = matchMarkdownTask(line);
+    assert.ok(Date.now() - t0 < 500);
+    assert.ok(m);
+    assert.strictEqual(matchMarkdownTask("- [ ] a" + " ".repeat(100000))?.text, "a");
+  });
+});

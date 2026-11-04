@@ -27,7 +27,19 @@ export function planLinkRenames(
     }
     let changed = false;
     const newLinks = links.map((l) => {
-      const newUri = byOld.get(l.uri);
+      let newUri = byOld.get(l.uri);
+      if (!newUri) {
+        // A renamed/moved directory is reported as one event: rewrite links beneath it.
+        for (const r of renames) {
+          const prefix = r.oldUri.endsWith("/") ? r.oldUri : `${r.oldUri}/`;
+          if (l.uri.startsWith(prefix)) {
+            newUri =
+              (r.newUri.endsWith("/") ? r.newUri : `${r.newUri}/`) +
+              l.uri.slice(prefix.length);
+            break;
+          }
+        }
+      }
       if (newUri) {
         changed = true;
         return { ...l, uri: newUri };

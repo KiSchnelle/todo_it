@@ -80,6 +80,8 @@ async function buildExtension() {
 }
 
 async function buildTests() {
+  // Drop stale output so renamed/deleted tests don't keep running locally.
+  fs.rmSync("dist/test", { recursive: true, force: true });
   const entryPoints = walk("test", (f) => f.endsWith(".test.ts"));
   await esbuild.build({
     entryPoints,

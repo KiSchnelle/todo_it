@@ -16,8 +16,12 @@ function task(id: string, props: Partial<ManualTask>): ManualTask {
 
 suite("isoDate", () => {
   test("returns YYYY-MM-DD from a Date", () => {
-    const d = new Date("2026-06-24T15:30:00Z");
+    const d = new Date(2026, 5, 24, 23, 30);
     assert.strictEqual(isoDate(d), "2026-06-24");
+  });
+
+  test("uses the local date, not UTC", () => {
+    assert.strictEqual(isoDate(new Date(2026, 0, 5, 0, 10)), "2026-01-05");
   });
 });
 

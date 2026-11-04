@@ -68,6 +68,9 @@ export class TaskDetailPanel {
     // here. Saving doesn't fire a self-close because the task still exists after
     // an updateTask round-trip.
     this.disposables.push(this.taskStore.onDidChange(() => void this.onStoreChanged()));
+    // Tear the panel down with the store (extension deactivation) so it never
+    // outlives the objects it points at.
+    this.disposables.push(this.taskStore.onWillDispose(() => this.panel.dispose()));
   }
 
   /**

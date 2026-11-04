@@ -46,9 +46,12 @@ export async function chat(
   let out = "";
   for await (const chunk of response.text) {
     if (token.isCancellationRequested) {
-      break;
+      throw new vscode.CancellationError();
     }
     out += chunk;
+  }
+  if (token.isCancellationRequested) {
+    throw new vscode.CancellationError();
   }
   return out;
 }

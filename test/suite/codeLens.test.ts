@@ -56,7 +56,7 @@ suite("TodoCodeLensProvider", () => {
     assert.strictEqual(lenses.length, 6); // 2 matches × 3 lenses
     const cmds = lenses.map((l) => l.command?.command);
     assert.deepStrictEqual(
-      cmds.sort(),
+      cmds.sort((a, b) => (a ?? "").localeCompare(b ?? "")),
       [
         "todoIt.ai.explainMatch",
         "todoIt.ai.explainMatch",

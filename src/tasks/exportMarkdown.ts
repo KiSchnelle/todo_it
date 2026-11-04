@@ -39,6 +39,9 @@ export function renderTasksAsMarkdown(
   const open = tasks.filter((t) => !t.done);
   const done = tasks.filter((t) => t.done);
   const byParent = groupByParent(tasks);
+  const ids = new Set(tasks.map((t) => t.id));
+  // Orphans (parent missing) count as top-level, matching the tree's rule.
+  const isTopLevel = (t: ManualTask): boolean => !t.parentId || !ids.has(t.parentId);
   const renderPath = opts.pathRenderer ?? ((uri: string) => uri);
 
   // Group open tasks by priority.
@@ -52,7 +55,7 @@ export function renderTasksAsMarkdown(
   for (const key of [...PRIORITY_ORDER, "none" as const]) {
     const list = buckets.get(key) ?? [];
     // Only render top-level open tasks here; subtasks render under their parents.
-    const topLevel = list.filter((t) => !t.parentId);
+    const topLevel = list.filter(isTopLevel);
     if (topLevel.length === 0) {
       continue;
     }
@@ -65,7 +68,7 @@ export function renderTasksAsMarkdown(
 
   if (done.length > 0) {
     out.push("## Done", "");
-    for (const t of done.filter((t) => !t.parentId)) {
+    for (const t of done.filter(isTopLevel)) {
       out.push(...renderTaskLines(t, byParent, renderPath, 0));
     }
     out.push("");

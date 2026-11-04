@@ -13,7 +13,8 @@ const CONTEXT_LINES = 2;
 export async function buildMatchTooltip(match: TagMatch): Promise<vscode.MarkdownString> {
   const md = new vscode.MarkdownString();
   md.supportThemeIcons = true;
-  md.appendMarkdown(`**${match.tag}** — \`${relPathLine(match.uri, match.line)}\`\n\n`);
+  md.appendMarkdown("**").appendText(match.tag).appendMarkdown("** — ");
+  md.appendText(relPathLine(match.uri, match.line)).appendMarkdown("\n\n");
 
   try {
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(match.uri));

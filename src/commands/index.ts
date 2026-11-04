@@ -105,7 +105,7 @@ async function snoozeTask(
   }
   const tomorrow = isoDate(addDays(new Date(), 1));
   const nextWeek = isoDate(addDays(new Date(), 7));
-  const items: Array<vscode.QuickPickItem & { value: string | "custom" | "clear" }> = [
+  const items: Array<vscode.QuickPickItem & { value: "custom" | "clear" | (string & {}) }> = [
     { label: `$(clock) Tomorrow`, description: tomorrow, value: tomorrow },
     { label: `$(clock) Next week`, description: nextWeek, value: nextWeek },
     { label: `$(edit) Pick a date…`, description: "YYYY-MM-DD or '3 days', '2 weeks'…", value: "custom" },
@@ -137,11 +137,8 @@ async function snoozeTask(
   } else {
     snoozedUntil = picked.value;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.updateTask(folder, t.task.id, { snoozedUntil });
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.updateMany(folder, ids, { snoozedUntil });
   }
 }
 
@@ -594,6 +591,23 @@ function taskTargets(node?: TreeNode, selection?: readonly TreeNode[]): Array<Ex
   return out;
 }
 
+/** Groups task nodes by workspace folder so bulk actions persist once per folder. */
+function groupByFolder(
+  targets: readonly Extract<TreeNode, { kind: "task" }>[],
+): Array<[vscode.WorkspaceFolder, string[]]> {
+  const byKey = new Map<string, [vscode.WorkspaceFolder, string[]]>();
+  for (const t of targets) {
+    const folder = folderByKey(t.folderUri);
+    if (!folder) {
+      continue;
+    }
+    const entry = byKey.get(t.folderUri) ?? [folder, []];
+    entry[1].push(t.task.id);
+    byKey.set(t.folderUri, entry);
+  }
+  return [...byKey.values()];
+}
+
 async function deleteTask(
   taskStore: TaskStore,
   node?: TreeNode,
@@ -604,13 +618,21 @@ async function deleteTask(
     return;
   }
   // Tally descendants across the selection so the confirmation prompt is accurate.
-  let extra = 0;
+  // Descendants already in the selection are counted once (as targets).
+  const targetKeys = new Set(targets.map((t) => `${t.folderUri}|${t.task.id}`));
+  const counted = new Set<string>();
   for (const t of targets) {
     const folder = folderByKey(t.folderUri);
     if (folder) {
-      extra += (await taskStore.descendantsOf(folder, t.task.id)).length;
+      for (const d of await taskStore.descendantsOf(folder, t.task.id)) {
+        const k = `${t.folderUri}|${d.id}`;
+        if (!targetKeys.has(k)) {
+          counted.add(k);
+        }
+      }
     }
   }
+  const extra = counted.size;
   const prompt =
     targets.length === 1
       ? `Delete task "${targets[0].task.title}"${extra > 0 ? ` (and ${extra} subtask${extra === 1 ? "" : "s"})` : ""}?`
@@ -619,11 +641,8 @@ async function deleteTask(
   if (choice !== "Delete") {
     return;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.removeTask(folder, t.task.id);
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.removeMany(folder, ids);
   }
 }
 
@@ -640,11 +659,8 @@ async function toggleTaskDone(
   // Otherwise we drive all targets to done — the common bulk action.
   const allDone = targets.every((t) => t.task.done);
   const next = !allDone;
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.setDone(folder, t.task.id, next);
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.setDoneMany(folder, ids, next);
   }
 }
 
@@ -674,10 +690,7 @@ async function setTaskPriority(
   if (!picked) {
     return;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.updateTask(folder, t.task.id, { priority: picked.priority });
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.updateMany(folder, ids, { priority: picked.priority });
   }
 }

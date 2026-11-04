@@ -6,7 +6,18 @@ import { tasksDueBy } from "../tasks/dueCheck";
 export const MAX_TEXT = 200;
 export const DEFAULT_TODO_LIMIT = 200;
 
-export type TaskStatusFilter = "open" | "done" | "all" | "due";
+export const TASK_STATUSES = ["open", "done", "all", "due"] as const;
+export type TaskStatusFilter = (typeof TASK_STATUSES)[number];
+
+export const MAX_TITLE_LEN = 500;
+export const MAX_NOTE_LEN = 5000;
+
+/** Escapes Markdown metacharacters and flattens newlines so model-supplied text renders literally. */
+export function escapeMarkdown(s: string): string {
+  return String(s)
+    .replace(/\s*[\r\n]+\s*/g, " ")
+    .replace(/[\\`*_{}[\]()<>#+!|~&-]/g, "\\$&");
+}
 
 export interface ListTodosInput {
   tag?: string;
@@ -38,7 +49,7 @@ export function truncate(s: string, max: number = MAX_TEXT): string {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const PRIORITIES: readonly TaskPriority[] = ["low", "medium", "high"];
+export const PRIORITIES: readonly TaskPriority[] = ["low", "medium", "high"];
 
 export function isIsoDate(s: string): boolean {
   if (!ISO_DATE.test(s)) {
@@ -59,6 +70,17 @@ export function validateAddTask(input: AddTaskInput): string | undefined {
   if (input.dueDate !== undefined && !isIsoDate(input.dueDate)) {
     return "`dueDate` must be an ISO date (YYYY-MM-DD).";
   }
+  if (input.title.length > MAX_TITLE_LEN) {
+    return `\`title\` must be at most ${MAX_TITLE_LEN} characters.`;
+  }
+  for (const key of ["note", "parentId", "folder"] as const) {
+    if (input[key] !== undefined && typeof input[key] !== "string") {
+      return `\`${key}\` must be a string.`;
+    }
+  }
+  if (input.note !== undefined && input.note.length > MAX_NOTE_LEN) {
+    return `\`note\` must be at most ${MAX_NOTE_LEN} characters.`;
+  }
   return undefined;
 }
 
@@ -68,8 +90,8 @@ export function filterMatches(
   input: ListTodosInput,
   pathOf: (m: TagMatch) => string,
 ): TagMatch[] {
-  const tag = input.tag?.trim().toLowerCase();
-  const q = input.query?.trim().toLowerCase();
+  const tag = typeof input.tag === "string" ? input.tag.trim().toLowerCase() : undefined;
+  const q = typeof input.query === "string" ? input.query.trim().toLowerCase() : undefined;
   return matches.filter((m) => {
     if (tag && m.tag.toLowerCase() !== tag) {
       return false;
@@ -124,9 +146,9 @@ export function filterTasks(tasks: readonly ManualTask[], input: ListTasksInput,
     default:
       out = tasks.filter((t) => !t.done);
   }
-  const q = input.query?.trim().toLowerCase();
+  const q = typeof input.query === "string" ? input.query.trim().toLowerCase() : undefined;
   if (q) {
-    out = out.filter((t) => `${t.title} ${t.note ?? ""}`.toLowerCase().includes(q));
+    out = out.filter((t) => `${t.title} ${typeof t.note === "string" ? t.note : ""}`.toLowerCase().includes(q));
   }
   return out;
 }
@@ -148,7 +170,7 @@ export function renderTask(t: ManualTask, todayIso: string): string {
   if (t.parentId) {
     bits.push(`subtask of ${t.parentId}`);
   }
-  const note = t.note ? `\n  note: ${truncate(t.note.replace(/\s+/g, " "))}` : "";
+  const note = typeof t.note === "string" && t.note ? `\n  note: ${truncate(t.note.replace(/\s+/g, " "))}` : "";
   return `- ${t.title} (${bits.join(", ")})${note}`;
 }
 

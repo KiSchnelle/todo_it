@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import * as path from "node:path";
 import { rgPath } from "@vscode/ripgrep";
 import * as vscode from "vscode";
@@ -20,6 +20,9 @@ function buildArgs(config: TodoItConfig, target: string): string[] {
   if (config.respectGitignore) {
     // Honor .gitignore/.ignore even when the folder is not inside a git repo.
     args.push("--no-require-git");
+    // rg skips hidden files by default; the setting only controls ignore files, and the JS
+    // scanner and watcher include hidden files (.github/, .eslintrc.js). `.git` is excluded below.
+    args.push("--hidden");
   } else {
     args.push("-uu");
   }
@@ -45,6 +48,21 @@ function buildArgs(config: TodoItConfig, target: string): string[] {
   return args;
 }
 
+/** `git check-ignore` says ignored (exit 0). Any failure (no git, not a repo) means "not ignored". */
+function isGitIgnored(cwd: string, rel: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    // --no-index: ignore rules apply even to tracked files, matching what rg does.
+    execFile(
+      "git",
+      ["check-ignore", "-q", "--no-index", "--", rel],
+      { cwd },
+      (err) => {
+        resolve(err === null);
+      },
+    );
+  });
+}
+
 export class RipgrepScanner implements Scanner {
   constructor(private readonly logger: Logger) {}
 
@@ -65,6 +83,14 @@ export class RipgrepScanner implements Scanner {
     token?: vscode.CancellationToken,
   ): Promise<ScanResult> {
     const rel = path.relative(folder.uri.fsPath, fileUri.fsPath) || ".";
+    // rg always searches explicitly-passed paths, ignoring .gitignore; check ignore rules ourselves.
+    if (
+      config.respectGitignore &&
+      rel !== "." &&
+      (await isGitIgnored(folder.uri.fsPath, rel))
+    ) {
+      return { results: [], truncated: false };
+    }
     return this.scan(folder, config, rel, token);
   }
 
@@ -143,7 +169,13 @@ export class RipgrepScanner implements Scanner {
       }
     });
 
-    await this.run(buildArgs(config, target), cwd, stream, () => truncated, token);
+    await this.run(
+      buildArgs(config, target),
+      cwd,
+      stream,
+      () => truncated,
+      token,
+    );
 
     const scannedAt = Date.now();
     const results: ScannedFileResult[] = [];

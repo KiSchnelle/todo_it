@@ -9,12 +9,14 @@ import {
   AddTaskInput,
   clampLimit,
   filterMatches,
+  escapeMarkdown,
   filterTasks,
   ListTasksInput,
   ListTodosInput,
   renderMatches,
   renderTaskGroups,
   SetTaskDoneInput,
+  truncate,
   validateAddTask,
 } from "./toolFormat";
 
@@ -42,7 +44,7 @@ function resolveFolder(name: string | undefined): vscode.WorkspaceFolder | undef
 /**
  * Registers Todo It's Language Model tools. These replace the old `@todo-it`
  * chat participant (deprecated and unsupported in the Copilot harness): the
- * agent calls the tools itself, or the user references them with `#todos`,
+ * agent calls the tools itself, or the user references them with `#todoComments`,
  * `#tasks`, `#addTask`, `#completeTask` in any chat.
  */
 export function registerLanguageModelTools(
@@ -59,7 +61,7 @@ export function registerLanguageModelTools(
     prepareInvocation() {
       return { invocationMessage: "Reading scanned TODO comments" };
     },
-    async invoke(options) {
+    invoke(options) {
       const input = options.input ?? {};
       const all = scanStore.allMatches();
       const filtered = filterMatches(all, input, (m) => relPath(m.uri));
@@ -90,15 +92,34 @@ export function registerLanguageModelTools(
   };
 
   const addTask: vscode.LanguageModelTool<AddTaskInput> = {
-    prepareInvocation(options) {
-      const { title, priority, dueDate } = options.input;
-      const meta = [priority && `priority ${priority}`, dueDate && `due ${dueDate}`].filter(Boolean).join(", ");
+    async prepareInvocation(options) {
+      const input = options.input;
+      const error = validateAddTask(input);
+      if (error) {
+        throw new Error(error);
+      }
+      const md = new vscode.MarkdownString();
+      md.appendMarkdown(`**${escapeMarkdown(input.title.trim())}**`);
+      const meta = [
+        input.priority && `priority ${input.priority}`,
+        input.dueDate && `due ${input.dueDate}`,
+      ].filter(Boolean);
+      if (input.parentId) {
+        const parent = await findTask(taskStore, input.parentId);
+        meta.push(`subtask of ${parent ? `"${parent.title}"` : input.parentId}`);
+      }
+      if (input.folder && isMultiRoot()) {
+        meta.push(`folder ${input.folder}`);
+      }
+      if (meta.length > 0) {
+        md.appendMarkdown(` — ${escapeMarkdown(meta.join(", "))}`);
+      }
+      if (input.note?.trim()) {
+        md.appendMarkdown(`\n\nNote: ${escapeMarkdown(truncate(input.note.trim(), 300))}`);
+      }
       return {
-        invocationMessage: `Adding task "${title}"`,
-        confirmationMessages: {
-          title: "Add Todo It task?",
-          message: new vscode.MarkdownString(`**${title}**${meta ? ` — ${meta}` : ""}`),
-        },
+        invocationMessage: `Adding task "${truncate(input.title.trim(), 80)}"`,
+        confirmationMessages: { title: "Add Todo It task?", message: md },
       };
     },
     async invoke(options) {
@@ -107,7 +128,9 @@ export function registerLanguageModelTools(
       if (error) {
         throw new Error(error);
       }
-      const folder = resolveFolder(input.folder);
+      // A subtask lives in its parent's folder; when no folder is given, find the parent across folders.
+      const parent = input.parentId && !input.folder ? await findTask(taskStore, input.parentId) : undefined;
+      const folder = parent ? parent.folder : resolveFolder(input.folder);
       if (!folder) {
         throw new Error(
           input.folder
@@ -127,7 +150,7 @@ export function registerLanguageModelTools(
         title: input.title.trim(),
         priority: input.priority,
         dueDate: input.dueDate,
-        note: input.note,
+        note: input.note?.trim() ? input.note : undefined,
         parentId: input.parentId,
       });
       return textResult(`Created task "${task.title}" (id: ${task.id}) in ${folder.name}.`);
@@ -138,7 +161,7 @@ export function registerLanguageModelTools(
     async prepareInvocation(options) {
       const done = options.input.done ?? true;
       const found = await findTask(taskStore, options.input.taskId);
-      const label = found ? `"${found.title}"` : options.input.taskId;
+      const label = escapeMarkdown(found ? `"${found.title}"` : String(options.input.taskId));
       return {
         invocationMessage: `${done ? "Completing" : "Reopening"} task ${label}`,
         confirmationMessages: {
@@ -151,6 +174,9 @@ export function registerLanguageModelTools(
     },
     async invoke(options) {
       const done = options.input.done ?? true;
+      if (typeof options.input.taskId !== "string" || typeof done !== "boolean") {
+        throw new Error("`taskId` must be a string and `done` a boolean.");
+      }
       const found = await findTask(taskStore, options.input.taskId);
       if (!found) {
         throw new Error(`No task with id "${options.input.taskId}". Use the todoIt_listTasks tool to look up ids.`);

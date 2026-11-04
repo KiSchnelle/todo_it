@@ -82,4 +82,11 @@ suite("renderTasksAsMarkdown", () => {
     );
     assert.match(md, /Child _\(low, due 2026-06-30\)_/);
   });
+
+  test("renders orphaned subtasks (missing parent) as top-level", () => {
+    const md = renderTasksAsMarkdown([task("o", { title: "Orphan", parentId: "gone" })], {
+      heading: "# Tasks",
+    });
+    assert.match(md, /- \[ \] Orphan/);
+  });
 });

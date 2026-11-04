@@ -27,7 +27,10 @@ export function activateCommon(
   const logger = new Logger();
   const config = new Configuration(context);
 
-  const taskStore = new TaskStore(createTaskStorage(config.tasksStorage, context, logger), logger);
+  const taskStore = new TaskStore(
+    createTaskStorage(config.tasksStorage, context, logger),
+    logger,
+  );
   const scanStore = new ScanStore();
   const scanner = createScanner(logger);
   const scanController = new ScanController(scanner, scanStore, config, logger);
@@ -43,11 +46,18 @@ export function activateCommon(
     treeDataProvider: treeProvider,
     showCollapseAll: true,
     canSelectMany: true, // enables multi-select for bulk task operations
+    // TaskStore.setDone cascades to subtasks itself; VS Code's automatic parent/child
+    // propagation would otherwise e.g. reopen every sibling when one subtask is unchecked.
+    manageCheckboxStateManually: true,
     dragAndDropController: new TaskDnDController(taskStore),
   });
 
   const syncGroupingContext = (): void => {
-    void vscode.commands.executeCommand("setContext", "todoIt.grouping", config.all.grouping);
+    void vscode.commands.executeCommand(
+      "setContext",
+      "todoIt.grouping",
+      config.all.grouping,
+    );
   };
   const updateMessage = (): void => {
     treeView.message = treeProvider.getMessage();
@@ -56,7 +66,13 @@ export function activateCommon(
   // Filter starts cleared; this also clears any stale context from a previous session.
   void vscode.commands.executeCommand("setContext", "todoIt.hasFilter", false);
 
-  registerCommands(context, { taskStore, scanController, scanStore, config, treeProvider });
+  registerCommands(context, {
+    taskStore,
+    scanController,
+    scanStore,
+    config,
+    treeProvider,
+  });
 
   context.subscriptions.push(
     logger,
@@ -80,6 +96,7 @@ export function activateCommon(
     vscode.workspace.onDidChangeWorkspaceFolders((e) => {
       fileWatcher.syncFolders();
       for (const removed of e.removed) {
+        scanController.cancelFolder(removed.uri.toString());
         scanStore.removeFolder(removed.uri.toString());
       }
       for (const added of e.added) {
@@ -104,7 +121,9 @@ export function activateCommon(
     }),
     config.onDidChange((e) => {
       if (e.affectsConfiguration("todoIt.tasks.storage")) {
-        taskStore.setStorage(createTaskStorage(config.tasksStorage, context, logger));
+        taskStore.setStorage(
+          createTaskStorage(config.tasksStorage, context, logger),
+        );
       }
       if (
         e.affectsConfiguration("todoIt.tags") ||

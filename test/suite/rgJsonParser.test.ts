@@ -21,8 +21,14 @@ suite("rgJsonParser", () => {
   });
 
   test("ignores non-match events", () => {
-    assert.strictEqual(parseRgMatch(JSON.stringify({ type: "begin", data: {} })), undefined);
-    assert.strictEqual(parseRgMatch(JSON.stringify({ type: "summary" })), undefined);
+    assert.strictEqual(
+      parseRgMatch(JSON.stringify({ type: "begin", data: {} })),
+      undefined,
+    );
+    assert.strictEqual(
+      parseRgMatch(JSON.stringify({ type: "summary" })),
+      undefined,
+    );
   });
 
   test("ignores malformed or empty lines", () => {
@@ -32,7 +38,9 @@ suite("rgJsonParser", () => {
 
   test("stream reassembles a match split across chunks", () => {
     const seen: string[] = [];
-    const stream = new RgJsonStream((m) => seen.push(`${m.path}:${m.lineNumber}`));
+    const stream = new RgJsonStream((m) =>
+      seen.push(`${m.path}:${m.lineNumber}`),
+    );
     stream.push(matchLine.slice(0, 20));
     stream.push(`${matchLine.slice(20)}\n`);
     assert.deepStrictEqual(seen, ["src/app.ts:42"]);
@@ -45,5 +53,23 @@ suite("rgJsonParser", () => {
     assert.deepStrictEqual(seen, []);
     stream.flush();
     assert.deepStrictEqual(seen, ["src/app.ts"]);
+  });
+});
+
+suite("rgJsonParser bytes", () => {
+  test("decodes lines.bytes for non-UTF-8 lines", async () => {
+    const { parseRgMatch } = await import("../../src/scanner/rgJsonParser");
+    const bytes = Buffer.from([
+      0x2f, 0x2f, 0x20, 0x54, 0x4f, 0x44, 0x4f, 0x20, 0x63, 0x61, 0x66, 0xe9,
+      0x0a,
+    ]).toString("base64");
+    const m = parseRgMatch(
+      JSON.stringify({
+        type: "match",
+        data: { path: { text: "a.txt" }, lines: { bytes }, line_number: 3 },
+      }),
+    );
+    assert.ok(m);
+    assert.ok(m.lineText.startsWith("// TODO caf"));
   });
 });

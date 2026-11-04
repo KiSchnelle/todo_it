@@ -24,11 +24,21 @@ suite("planLinkRenames", () => {
     ]);
     assert.strictEqual(updates.length, 1);
     assert.strictEqual(updates[0].taskId, "a");
-    assert.deepStrictEqual(updates[0].newLinks.map((l) => l.uri), ["file:///new.ts"]);
+    assert.deepStrictEqual(
+      updates[0].newLinks.map((l) => l.uri),
+      ["file:///new.ts"],
+    );
   });
 
   test("preserves untouched links inside a multi-link task", () => {
-    const tasks = [task("multi", "file:///a-old.ts", "file:///b-stable.ts", "file:///c-stable.ts")];
+    const tasks = [
+      task(
+        "multi",
+        "file:///a-old.ts",
+        "file:///b-stable.ts",
+        "file:///c-stable.ts",
+      ),
+    ];
     const updates = planLinkRenames(tasks, [
       { oldUri: "file:///a-old.ts", newUri: "file:///a-new.ts" },
     ]);
@@ -49,7 +59,27 @@ suite("planLinkRenames", () => {
   });
 
   test("empty renames or empty tasks → empty result", () => {
-    assert.deepStrictEqual(planLinkRenames([], [{ oldUri: "a", newUri: "b" }]), []);
+    assert.deepStrictEqual(
+      planLinkRenames([], [{ oldUri: "a", newUri: "b" }]),
+      [],
+    );
     assert.deepStrictEqual(planLinkRenames([task("a", "x")], []), []);
+  });
+});
+
+suite("planLinkRenames directories", () => {
+  test("rewrites links beneath a renamed directory", () => {
+    const updates = planLinkRenames(
+      [
+        task("a", "file:///src/auth/session.ts"),
+        task("b", "file:///src/authx/y.ts"),
+      ],
+      [{ oldUri: "file:///src/auth", newUri: "file:///src/login" }],
+    );
+    assert.strictEqual(updates.length, 1);
+    assert.deepStrictEqual(
+      updates[0].newLinks.map((l) => l.uri),
+      ["file:///src/login/session.ts"],
+    );
   });
 });
