@@ -28,11 +28,7 @@ export class ScanController {
     const token = this.begin(key);
     const startedAt = Date.now();
     try {
-      const { results, truncated } = await this.scanner.scanFolder(
-        folder,
-        this.config.all,
-        token,
-      );
+      const { results, truncated } = await this.scanner.scanFolder(folder, this.config.all, token);
       if (token.isCancellationRequested || !this.isOpenFolder(folder)) {
         return;
       }
@@ -47,10 +43,7 @@ export class ScanController {
     }
   }
 
-  async scanFile(
-    folder: vscode.WorkspaceFolder,
-    fileUri: vscode.Uri,
-  ): Promise<void> {
+  async scanFile(folder: vscode.WorkspaceFolder, fileUri: vscode.Uri): Promise<void> {
     await this.scanPaths(folder, [fileUri]);
   }
 
@@ -88,19 +81,10 @@ export class ScanController {
             removed.push(uriString);
             continue;
           }
-          if (
-            !(type & vscode.FileType.Directory) &&
-            fileFilter &&
-            !fileFilter(uri)
-          ) {
+          if (!(type & vscode.FileType.Directory) && fileFilter && !fileFilter(uri)) {
             continue;
           }
-          const { results } = await this.scanner.scanFile(
-            folder,
-            uri,
-            this.config.all,
-            token,
-          );
+          const { results } = await this.scanner.scanFile(folder, uri, this.config.all, token);
           if (token.isCancellationRequested) {
             continue;
           }
@@ -124,10 +108,7 @@ export class ScanController {
       }
     };
     await Promise.all(
-      Array.from(
-        { length: Math.min(SCAN_CONCURRENCY, Math.max(1, uris.length)) },
-        worker,
-      ),
+      Array.from({ length: Math.min(SCAN_CONCURRENCY, Math.max(1, uris.length)) }, worker),
     );
     if (!this.isOpenFolder(folder)) {
       return;

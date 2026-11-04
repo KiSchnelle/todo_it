@@ -91,7 +91,11 @@ export class DueNotifier implements vscode.Disposable {
     }
   }
 
-  private async notify(folder: vscode.WorkspaceFolder, task: ManualTask, today: string): Promise<void> {
+  private async notify(
+    folder: vscode.WorkspaceFolder,
+    task: ManualTask,
+    today: string,
+  ): Promise<void> {
     const overdue = task.dueDate && task.dueDate < today;
     const msg = overdue
       ? `Todo It: "${task.title}" was due ${task.dueDate}.`

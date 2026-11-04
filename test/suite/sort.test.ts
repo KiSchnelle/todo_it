@@ -23,7 +23,10 @@ suite("sortTasks", () => {
       task({ title: "b", order: 2 }),
       task({ title: "c", order: 0 }),
     ];
-    assert.deepStrictEqual(sortTasks(tasks, "manual").map((t) => t.title), ["c", "b", "a"]);
+    assert.deepStrictEqual(
+      sortTasks(tasks, "manual").map((t) => t.title),
+      ["c", "b", "a"],
+    );
   });
 
   test("priority: high > medium > low > none, completed last", () => {

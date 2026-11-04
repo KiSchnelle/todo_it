@@ -3,7 +3,12 @@ import { isMarkdownUri, matchMarkdownTask, MD_TASK_TAG } from "../../src/scanner
 
 suite("matchMarkdownTask", () => {
   test("matches dash, star, plus, and ordered checkboxes", () => {
-    for (const line of ["- [ ] write tests", "* [ ] write tests", "+ [ ] write tests", "1. [ ] write tests"]) {
+    for (const line of [
+      "- [ ] write tests",
+      "* [ ] write tests",
+      "+ [ ] write tests",
+      "1. [ ] write tests",
+    ]) {
       const m = matchMarkdownTask(line);
       assert.ok(m, `should match: ${line}`);
       assert.strictEqual(m?.text, "write tests");

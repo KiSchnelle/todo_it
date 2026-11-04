@@ -125,12 +125,18 @@ export function renderMatches(
     matches.length < total
       ? `${total} matching TODO comments (showing the first ${matches.length}):`
       : `${total} matching TODO comment${total === 1 ? "" : "s"}:`;
-  const lines = matches.map((m) => `- [${m.tag}] ${pathLineOf(m)} — ${truncate(m.text || m.lineText.trim())}`);
+  const lines = matches.map(
+    (m) => `- [${m.tag}] ${pathLineOf(m)} — ${truncate(m.text || m.lineText.trim())}`,
+  );
   return [header, ...lines].join("\n");
 }
 
 /** Filters manual tasks by status and substring query over title + note. */
-export function filterTasks(tasks: readonly ManualTask[], input: ListTasksInput, todayIso: string): ManualTask[] {
+export function filterTasks(
+  tasks: readonly ManualTask[],
+  input: ListTasksInput,
+  todayIso: string,
+): ManualTask[] {
   const status = input.status ?? "open";
   let out: ManualTask[];
   switch (status) {
@@ -148,7 +154,9 @@ export function filterTasks(tasks: readonly ManualTask[], input: ListTasksInput,
   }
   const q = typeof input.query === "string" ? input.query.trim().toLowerCase() : undefined;
   if (q) {
-    out = out.filter((t) => `${t.title} ${typeof t.note === "string" ? t.note : ""}`.toLowerCase().includes(q));
+    out = out.filter((t) =>
+      `${t.title} ${typeof t.note === "string" ? t.note : ""}`.toLowerCase().includes(q),
+    );
   }
   return out;
 }
@@ -170,7 +178,10 @@ export function renderTask(t: ManualTask, todayIso: string): string {
   if (t.parentId) {
     bits.push(`subtask of ${t.parentId}`);
   }
-  const note = typeof t.note === "string" && t.note ? `\n  note: ${truncate(t.note.replace(/\s+/g, " "))}` : "";
+  const note =
+    typeof t.note === "string" && t.note
+      ? `\n  note: ${truncate(t.note.replace(/\s+/g, " "))}`
+      : "";
   return `- ${t.title} (${bits.join(", ")})${note}`;
 }
 

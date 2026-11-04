@@ -16,7 +16,8 @@ export class Logger {
   }
 
   error(message: string, err?: unknown): void {
-    const detail = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : err ? safeStringify(err) : "";
+    const detail =
+      err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : err ? safeStringify(err) : "";
     this.channel.appendLine(`[error] ${message}${detail ? `: ${detail}` : ""}`);
   }
 

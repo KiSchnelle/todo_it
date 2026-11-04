@@ -27,17 +27,9 @@ export class JsScanner implements Scanner {
     if (config.tags.length === 0 && !config.markdownTasksEnabled) {
       return { results: [], truncated: false };
     }
-    const include = new vscode.RelativePattern(
-      folder,
-      combineGlobs(config.includeGlobs),
-    );
+    const include = new vscode.RelativePattern(folder, combineGlobs(config.includeGlobs));
     const exclude = combineGlobs([...config.excludeGlobs, ...ALWAYS_EXCLUDE]);
-    const files = await vscode.workspace.findFiles(
-      include,
-      exclude,
-      config.maxResults,
-      token,
-    );
+    const files = await vscode.workspace.findFiles(include, exclude, config.maxResults, token);
     return this.scanFiles(folder, files, config, token);
   }
 
@@ -50,25 +42,16 @@ export class JsScanner implements Scanner {
     let isDirectory = false;
     try {
       isDirectory =
-        ((await vscode.workspace.fs.stat(fileUri)).type &
-          vscode.FileType.Directory) !==
-        0;
+        ((await vscode.workspace.fs.stat(fileUri)).type & vscode.FileType.Directory) !== 0;
     } catch {
       // Fall through: the read below reports the failure.
     }
     if (isDirectory) {
       // A directory event (created/moved in): scan its subtree.
-      const rel = vscode.workspace
-        .asRelativePath(fileUri, false)
-        .replace(/\\/g, "/");
+      const rel = vscode.workspace.asRelativePath(fileUri, false).replace(/\\/g, "/");
       const include = new vscode.RelativePattern(folder, `${rel}/**/*`);
       const exclude = combineGlobs([...config.excludeGlobs, ...ALWAYS_EXCLUDE]);
-      const files = await vscode.workspace.findFiles(
-        include,
-        exclude,
-        config.maxResults,
-        token,
-      );
+      const files = await vscode.workspace.findFiles(include, exclude, config.maxResults, token);
       const filter = createPathFilter(config.includeGlobs, []);
       const wanted = files.filter((f) =>
         filter.isIncluded(vscode.workspace.asRelativePath(f, false)),
@@ -103,9 +86,7 @@ export class JsScanner implements Scanner {
       try {
         bytes = await vscode.workspace.fs.readFile(uri);
       } catch (err) {
-        this.logger.warn(
-          `Failed to read ${uri.fsPath}: ${(err as Error).message}`,
-        );
+        this.logger.warn(`Failed to read ${uri.fsPath}: ${(err as Error).message}`);
         return;
       }
       if (bytes.length > MAX_FILE_BYTES) {
@@ -171,20 +152,13 @@ export class JsScanner implements Scanner {
 
     let next = 0;
     const worker = async (): Promise<void> => {
-      while (
-        next < files.length &&
-        !truncated &&
-        !token?.isCancellationRequested
-      ) {
+      while (next < files.length && !truncated && !token?.isCancellationRequested) {
         const i = next++;
         await processFile(files[i]);
       }
     };
     await Promise.all(
-      Array.from(
-        { length: Math.min(READ_CONCURRENCY, Math.max(1, files.length)) },
-        worker,
-      ),
+      Array.from({ length: Math.min(READ_CONCURRENCY, Math.max(1, files.length)) }, worker),
     );
 
     const scannedAt = Date.now();

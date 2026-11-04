@@ -58,10 +58,7 @@ suite("expandToAncestors", () => {
       t("leaf2", "Leaf2", "root"),
     ];
     const visible = expandToAncestors(tasks, ["leaf1", "leaf2"]);
-    assert.deepStrictEqual(
-      [...visible].sort(),
-      ["leaf1", "leaf2", "mid", "root"],
-    );
+    assert.deepStrictEqual([...visible].sort(), ["leaf1", "leaf2", "mid", "root"]);
   });
 
   test("stops the walk at an unknown parentId (orphan)", () => {

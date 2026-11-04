@@ -13,9 +13,7 @@ function createScanner(logger: Logger): Scanner {
       require("./scanner/ripgrepScanner") as typeof import("./scanner/ripgrepScanner");
     return new RipgrepScanner(logger);
   } catch (err) {
-    logger.warn(
-      `ripgrep unavailable, falling back to the JS scanner: ${(err as Error).message}`,
-    );
+    logger.warn(`ripgrep unavailable, falling back to the JS scanner: ${(err as Error).message}`);
     return new JsScanner(logger);
   }
 }

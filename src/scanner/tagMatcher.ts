@@ -15,10 +15,7 @@ const WORD_CHAR = /\w/;
  * or `TODO!` still match. `boundary` lets ripgrep use an ASCII-only `\b` so it
  * agrees with the JS engine.
  */
-function tagAlternation(
-  tags: TagDefinition[],
-  boundary = "\\b",
-): string | undefined {
+function tagAlternation(tags: TagDefinition[], boundary = "\\b"): string | undefined {
   const names = tags.map((t) => t.tag).filter((t) => t.length > 0);
   if (names.length === 0) {
     return undefined;
@@ -77,9 +74,7 @@ export function tagPatternSource(
   const alternation = tagAlternation(tags, RG_BOUNDARY);
   const alternatives: string[] = [];
   if (alternation) {
-    alternatives.push(
-      commentsOnly ? `${markerGroup(markers)}.*?${alternation}` : alternation,
-    );
+    alternatives.push(commentsOnly ? `${markerGroup(markers)}.*?${alternation}` : alternation);
   }
   if (markdownTasksEnabled) {
     alternatives.push(MD_TASK_RG_PATTERN);
@@ -87,9 +82,7 @@ export function tagPatternSource(
   if (alternatives.length === 0) {
     return "\\b\\B";
   }
-  return alternatives.length === 1
-    ? alternatives[0]
-    : `(?:${alternatives.join("|")})`;
+  return alternatives.length === 1 ? alternatives[0] : `(?:${alternatives.join("|")})`;
 }
 
 export interface LineMatch {
@@ -116,12 +109,8 @@ export class TagMatcher {
     markers: string[],
   ) {
     const alternation = tagAlternation(tags);
-    this.tagRegex = alternation
-      ? new RegExp(alternation, caseSensitive ? "g" : "gi")
-      : undefined;
-    this.markerRegex = commentsOnly
-      ? new RegExp(markerGroup(markers))
-      : undefined;
+    this.tagRegex = alternation ? new RegExp(alternation, caseSensitive ? "g" : "gi") : undefined;
+    this.markerRegex = commentsOnly ? new RegExp(markerGroup(markers)) : undefined;
     for (const t of tags) {
       if (t.tag) {
         this.canonical.set(caseSensitive ? t.tag : t.tag.toUpperCase(), t.tag);

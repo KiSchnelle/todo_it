@@ -195,10 +195,7 @@ export async function trackAsTaskAI(
   }
 
   const context = await readContext(node.match.uri, node.match.line, config.all.aiContextLines);
-  const originalComment = truncate(
-    node.match.text || node.match.lineText.trim(),
-    MAX_FINDING_TEXT,
-  );
+  const originalComment = truncate(node.match.text || node.match.lineText.trim(), MAX_FINDING_TEXT);
   const prompt =
     `You are turning a short code comment into a fuller task description. The comment may be cryptic — use the surrounding code as context.\n\n` +
     `Tag: ${node.match.tag}\n` +
@@ -230,7 +227,8 @@ export async function trackAsTaskAI(
   }
 
   // Create the task — fall back to the plain comment text if expansion failed.
-  const fallbackTitle = node.match.text.trim() || `${node.match.tag}: ${node.match.lineText.trim()}`;
+  const fallbackTitle =
+    node.match.text.trim() || `${node.match.tag}: ${node.match.lineText.trim()}`;
   const task = await taskStore.addTask(folder, {
     title: expanded?.title ?? fallbackTitle,
     note: expanded?.note,
@@ -252,7 +250,9 @@ export async function trackAsTaskAI(
 
 export async function explainMatch(config: Configuration, node?: TreeNode): Promise<void> {
   if (node?.kind !== "match") {
-    void vscode.window.showInformationMessage("Todo It AI: right-click a scanned todo to explain it.");
+    void vscode.window.showInformationMessage(
+      "Todo It AI: right-click a scanned todo to explain it.",
+    );
     return;
   }
   const match: TagMatch = node.match;

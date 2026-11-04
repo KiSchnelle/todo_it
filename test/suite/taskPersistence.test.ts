@@ -4,10 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { ManualTask } from "../../src/models/types";
-import {
-  FileTaskStorage,
-  WorkspaceStateTaskStorage,
-} from "../../src/tasks/taskStorage";
+import { FileTaskStorage, WorkspaceStateTaskStorage } from "../../src/tasks/taskStorage";
 import { TaskStore } from "../../src/tasks/taskStore";
 import { Logger } from "../../src/util/logger";
 
@@ -21,8 +18,8 @@ function fakeContext(): vscode.ExtensionContext {
   const state = new Map<string, unknown>();
   const memento: vscode.Memento = {
     keys: () => [...state.keys()],
-    get: <T,>(key: string, defaultValue?: T): T | undefined =>
-      (state.has(key) ? (state.get(key) as T) : defaultValue),
+    get: <T>(key: string, defaultValue?: T): T | undefined =>
+      state.has(key) ? (state.get(key) as T) : defaultValue,
     update: (key: string, value: unknown): Promise<void> => {
       if (value === undefined) {
         state.delete(key);
@@ -99,7 +96,10 @@ suite("task persistence (integration)", () => {
     await store.addTask(folder, { title: "B" });
     await store.removeTask(folder, a.id);
 
-    assert.deepStrictEqual((await store.getTasks(folder)).map((t) => t.title), ["B"]);
+    assert.deepStrictEqual(
+      (await store.getTasks(folder)).map((t) => t.title),
+      ["B"],
+    );
 
     await vscode.workspace.fs.delete(folder.uri, { recursive: true });
     logger.dispose();
@@ -252,7 +252,10 @@ suite("task persistence (integration)", () => {
     const store = new TaskStore(new FileTaskStorage(".vscode/todos.json", logger), logger);
     const loaded = await store.getTasks(folder);
     // Only the well-formed task survives.
-    assert.deepStrictEqual(loaded.map((t) => t.id), ["good"]);
+    assert.deepStrictEqual(
+      loaded.map((t) => t.id),
+      ["good"],
+    );
 
     await vscode.workspace.fs.delete(folder.uri, { recursive: true });
     logger.dispose();
@@ -376,9 +379,9 @@ suite("task persistence (integration)", () => {
     await storage.save(folder, next);
     const reloaded = await storage.load(folder);
     assert.strictEqual(reloaded.length, 1);
-    assert.deepStrictEqual(reloaded[0].links?.map((l) => l.uri), [
-      "file:///a.ts",
-      "file:///b.ts",
-    ]);
+    assert.deepStrictEqual(
+      reloaded[0].links?.map((l) => l.uri),
+      ["file:///a.ts", "file:///b.ts"],
+    );
   });
 });

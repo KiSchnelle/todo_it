@@ -36,7 +36,10 @@ suite("buildMatchTooltip", () => {
     const md = await buildMatchTooltip(match(uri.toString(), 2));
     assert.ok(md.value.includes("**TODO**"), "header should include the tag");
     assert.ok(md.value.includes("→ // TODO: do something"), "matched line should be marked");
-    assert.ok(md.value.includes("  line0") || md.value.includes("  line1"), "context lines should appear");
+    assert.ok(
+      md.value.includes("  line0") || md.value.includes("  line1"),
+      "context lines should appear",
+    );
     await vscode.workspace.fs.delete(uri);
   });
 

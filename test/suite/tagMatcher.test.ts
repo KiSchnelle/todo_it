@@ -40,7 +40,10 @@ suite("tagMatcher", () => {
 
   test("finds multiple tags within one comment", () => {
     const m = matcher().match("// TODO and FIXME both");
-    assert.deepStrictEqual(m.map((x) => x.tag), ["TODO", "FIXME"]);
+    assert.deepStrictEqual(
+      m.map((x) => x.tag),
+      ["TODO", "FIXME"],
+    );
   });
 
   test("matches HTML/JSDoc style comment markers", () => {
@@ -54,7 +57,7 @@ suite("tagMatcher", () => {
     assert.deepStrictEqual(matcher().match("- **Status bar** TODO and FIXME"), []);
     assert.deepStrictEqual(matcher().match("int x = 5 * y; TODO"), []);
     assert.deepStrictEqual(matcher().match("array--; TODO"), []);
-    assert.deepStrictEqual(matcher().match("printf(\"%d TODO\", x);"), []);
+    assert.deepStrictEqual(matcher().match('printf("%d TODO", x);'), []);
 
     // Real line-start comments still match.
     assert.strictEqual(matcher().match("-- TODO sql comment")[0]?.tag, "TODO");
@@ -86,7 +89,12 @@ suite("tagMatcher", () => {
 
 suite("tag boundaries", () => {
   test("tags with non-word edge characters match", () => {
-    const m = new TagMatcher([{ tag: "@todo" } as never, { tag: "TODO!" } as never], false, false, []);
+    const m = new TagMatcher(
+      [{ tag: "@todo" } as never, { tag: "TODO!" } as never],
+      false,
+      false,
+      [],
+    );
     assert.strictEqual(m.match("// @todo fix").length, 1);
     assert.strictEqual(m.match("// TODO! now").length, 1);
   });

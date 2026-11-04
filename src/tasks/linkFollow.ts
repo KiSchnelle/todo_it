@@ -34,8 +34,7 @@ export function planLinkRenames(
           const prefix = r.oldUri.endsWith("/") ? r.oldUri : `${r.oldUri}/`;
           if (l.uri.startsWith(prefix)) {
             newUri =
-              (r.newUri.endsWith("/") ? r.newUri : `${r.newUri}/`) +
-              l.uri.slice(prefix.length);
+              (r.newUri.endsWith("/") ? r.newUri : `${r.newUri}/`) + l.uri.slice(prefix.length);
             break;
           }
         }

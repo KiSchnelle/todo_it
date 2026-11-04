@@ -9,12 +9,18 @@ function t(id: string, parentId?: string): ManualTask {
 suite("collectDescendants", () => {
   test("collects nested descendants", () => {
     const out = collectDescendants([t("a"), t("b", "a"), t("c", "b"), t("d")], "a");
-    assert.deepStrictEqual(out.map((x) => x.id), ["b", "c"]);
+    assert.deepStrictEqual(
+      out.map((x) => x.id),
+      ["b", "c"],
+    );
   });
 
   test("terminates on a parent cycle", () => {
     const out = collectDescendants([t("a", "b"), t("b", "a")], "a");
-    assert.deepStrictEqual(out.map((x) => x.id), ["b"]);
+    assert.deepStrictEqual(
+      out.map((x) => x.id),
+      ["b"],
+    );
   });
 
   test("terminates on a self-parent", () => {

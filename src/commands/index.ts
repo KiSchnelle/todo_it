@@ -1,10 +1,5 @@
 import * as vscode from "vscode";
-import {
-  explainMatch,
-  suggestTaskPriority,
-  summarizeTodos,
-  trackAsTaskAI,
-} from "../ai/aiCommands";
+import { explainMatch, suggestTaskPriority, summarizeTodos, trackAsTaskAI } from "../ai/aiCommands";
 import { Configuration } from "../config/configuration";
 import { GroupingMode, ManualTask, TaskLink, TaskSortMode, TreeNode } from "../models/types";
 import { ScanController } from "../scanner/scanController";
@@ -31,8 +26,12 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
   const { taskStore, scanController, scanStore, config, treeProvider } = deps;
   context.subscriptions.push(
     vscode.commands.registerCommand("todoIt.refresh", () => scanController.scanAll()),
-    vscode.commands.registerCommand("todoIt.addTask", (folderUri?: string) => addTask(taskStore, folderUri)),
-    vscode.commands.registerCommand("todoIt.editTask", (node?: TreeNode) => editTask(taskStore, node)),
+    vscode.commands.registerCommand("todoIt.addTask", (folderUri?: string) =>
+      addTask(taskStore, folderUri),
+    ),
+    vscode.commands.registerCommand("todoIt.editTask", (node?: TreeNode) =>
+      editTask(taskStore, node),
+    ),
     vscode.commands.registerCommand(
       "todoIt.deleteTask",
       (node?: TreeNode, selection?: readonly TreeNode[]) => deleteTask(taskStore, node, selection),
@@ -48,7 +47,9 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
         setTaskPriority(taskStore, node, selection),
     ),
     vscode.commands.registerCommand("todoIt.openMatch", (node?: TreeNode) => openMatch(node)),
-    vscode.commands.registerCommand("todoIt.trackAsTask", (node?: TreeNode) => trackAsTask(taskStore, node)),
+    vscode.commands.registerCommand("todoIt.trackAsTask", (node?: TreeNode) =>
+      trackAsTask(taskStore, node),
+    ),
     vscode.commands.registerCommand("todoIt.openTaskLink", (node?: TreeNode) =>
       openTaskLink(taskStore, node),
     ),
@@ -88,8 +89,7 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
     vscode.commands.registerCommand("todoIt.exportTasks", () => exportTasks(taskStore)),
     vscode.commands.registerCommand(
       "todoIt.snoozeTask",
-      (node?: TreeNode, selection?: readonly TreeNode[]) =>
-        snoozeTask(taskStore, node, selection),
+      (node?: TreeNode, selection?: readonly TreeNode[]) => snoozeTask(taskStore, node, selection),
     ),
   );
 }
@@ -108,11 +108,18 @@ async function snoozeTask(
   const items: Array<vscode.QuickPickItem & { value: "custom" | "clear" | (string & {}) }> = [
     { label: `$(clock) Tomorrow`, description: tomorrow, value: tomorrow },
     { label: `$(clock) Next week`, description: nextWeek, value: nextWeek },
-    { label: `$(edit) Pick a date…`, description: "YYYY-MM-DD or '3 days', '2 weeks'…", value: "custom" },
+    {
+      label: `$(edit) Pick a date…`,
+      description: "YYYY-MM-DD or '3 days', '2 weeks'…",
+      value: "custom",
+    },
     { label: `$(circle-slash) Clear snooze`, value: "clear" },
   ];
   const picked = await vscode.window.showQuickPick(items, {
-    placeHolder: targets.length === 1 ? `Snooze "${targets[0].task.title}" until…` : `Snooze ${targets.length} tasks until…`,
+    placeHolder:
+      targets.length === 1
+        ? `Snooze "${targets[0].task.title}" until…`
+        : `Snooze ${targets.length} tasks until…`,
   });
   if (!picked) {
     return;
@@ -148,9 +155,8 @@ async function exportTasks(taskStore: TaskStore): Promise<void> {
     void vscode.window.showWarningMessage("Todo It: open a folder to export tasks from.");
     return;
   }
-  const folder = folders.length === 1
-    ? folders[0]
-    : await pickFolder("Export tasks from which folder?");
+  const folder =
+    folders.length === 1 ? folders[0] : await pickFolder("Export tasks from which folder?");
   if (!folder) {
     return;
   }
@@ -262,7 +268,8 @@ async function goToTodo(scanStore: ScanStore): Promise<void> {
 async function setFilter(treeProvider: TodoTreeProvider): Promise<void> {
   const current = treeProvider.getFilter();
   const value = await vscode.window.showInputBox({
-    prompt: "Filter Todo It by substring (matches task titles/notes and scanned tag text, line, path)",
+    prompt:
+      "Filter Todo It by substring (matches task titles/notes and scanned tag text, line, path)",
     placeHolder: "auth, refactor, FIXME…",
     value: current ?? "",
   });
@@ -280,7 +287,10 @@ async function setTaskSort(config: Configuration): Promise<void> {
     { label: "Due date", mode: "dueDate" },
   ];
   const picked = await vscode.window.showQuickPick(
-    options.map((o) => ({ ...o, description: o.mode === current ? "$(check) current" : undefined })),
+    options.map((o) => ({
+      ...o,
+      description: o.mode === current ? "$(check) current" : undefined,
+    })),
     { placeHolder: "Sort tasks by…" },
   );
   if (picked) {
@@ -542,7 +552,8 @@ async function trackAsTask(taskStore: TaskStore, node?: TreeNode): Promise<void>
 async function addTask(taskStore: TaskStore, folderUri?: string): Promise<void> {
   // If a folderUri was passed (e.g. from the inline "Add a task…" row), use it
   // directly so multi-root users don't get an extra folder picker.
-  const folder = (folderUri && folderByKey(folderUri)) || (await pickFolder("Add task to which folder?"));
+  const folder =
+    (folderUri && folderByKey(folderUri)) || (await pickFolder("Add task to which folder?"));
   if (!folder) {
     return;
   }
@@ -573,7 +584,10 @@ async function editTask(taskStore: TaskStore, node?: TreeNode): Promise<void> {
 
 /** Reduces a TreeView context-menu invocation to a unique list of task nodes,
  *  honoring the multi-selection when VS Code passes one. */
-function taskTargets(node?: TreeNode, selection?: readonly TreeNode[]): Array<Extract<TreeNode, { kind: "task" }>> {
+function taskTargets(
+  node?: TreeNode,
+  selection?: readonly TreeNode[],
+): Array<Extract<TreeNode, { kind: "task" }>> {
   const pool: TreeNode[] = selection && selection.length > 0 ? [...selection] : node ? [node] : [];
   const seen = new Set<string>();
   const out: Array<Extract<TreeNode, { kind: "task" }>> = [];

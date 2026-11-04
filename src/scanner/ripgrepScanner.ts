@@ -52,14 +52,9 @@ function buildArgs(config: TodoItConfig, target: string): string[] {
 function isGitIgnored(cwd: string, rel: string): Promise<boolean> {
   return new Promise((resolve) => {
     // --no-index: ignore rules apply even to tracked files, matching what rg does.
-    execFile(
-      "git",
-      ["check-ignore", "-q", "--no-index", "--", rel],
-      { cwd },
-      (err) => {
-        resolve(err === null);
-      },
-    );
+    execFile("git", ["check-ignore", "-q", "--no-index", "--", rel], { cwd }, (err) => {
+      resolve(err === null);
+    });
   });
 }
 
@@ -84,11 +79,7 @@ export class RipgrepScanner implements Scanner {
   ): Promise<ScanResult> {
     const rel = path.relative(folder.uri.fsPath, fileUri.fsPath) || ".";
     // rg always searches explicitly-passed paths, ignoring .gitignore; check ignore rules ourselves.
-    if (
-      config.respectGitignore &&
-      rel !== "." &&
-      (await isGitIgnored(folder.uri.fsPath, rel))
-    ) {
+    if (config.respectGitignore && rel !== "." && (await isGitIgnored(folder.uri.fsPath, rel))) {
       return { results: [], truncated: false };
     }
     return this.scan(folder, config, rel, token);
@@ -169,13 +160,7 @@ export class RipgrepScanner implements Scanner {
       }
     });
 
-    await this.run(
-      buildArgs(config, target),
-      cwd,
-      stream,
-      () => truncated,
-      token,
-    );
+    await this.run(buildArgs(config, target), cwd, stream, () => truncated, token);
 
     const scannedAt = Date.now();
     const results: ScannedFileResult[] = [];

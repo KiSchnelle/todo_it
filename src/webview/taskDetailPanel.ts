@@ -158,9 +158,9 @@ export class TaskDetailPanel {
         return;
       }
     }
-    const priority = (["low", "medium", "high"].includes(message.priority)
-      ? message.priority
-      : undefined) as TaskPriority | undefined;
+    const priority = (
+      ["low", "medium", "high"].includes(message.priority) ? message.priority : undefined
+    ) as TaskPriority | undefined;
     const note = message.note.trim() ? message.note : undefined;
 
     await this.taskStore.updateTask(this.folder, this.taskId, { title, priority, dueDate, note });
@@ -182,7 +182,10 @@ export class TaskDetailPanel {
     const pos = new vscode.Position(link.line, link.column ?? 0);
     try {
       const doc = await vscode.workspace.openTextDocument(uri);
-      const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: false });
+      const editor = await vscode.window.showTextDocument(doc, {
+        viewColumn: vscode.ViewColumn.One,
+        preserveFocus: false,
+      });
       editor.selection = new vscode.Selection(pos, pos);
       editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
     } catch {

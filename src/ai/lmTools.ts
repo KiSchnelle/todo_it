@@ -129,7 +129,8 @@ export function registerLanguageModelTools(
         throw new Error(error);
       }
       // A subtask lives in its parent's folder; when no folder is given, find the parent across folders.
-      const parent = input.parentId && !input.folder ? await findTask(taskStore, input.parentId) : undefined;
+      const parent =
+        input.parentId && !input.folder ? await findTask(taskStore, input.parentId) : undefined;
       const folder = parent ? parent.folder : resolveFolder(input.folder);
       if (!folder) {
         throw new Error(
@@ -179,7 +180,9 @@ export function registerLanguageModelTools(
       }
       const found = await findTask(taskStore, options.input.taskId);
       if (!found) {
-        throw new Error(`No task with id "${options.input.taskId}". Use the todoIt_listTasks tool to look up ids.`);
+        throw new Error(
+          `No task with id "${options.input.taskId}". Use the todoIt_listTasks tool to look up ids.`,
+        );
       }
       await taskStore.setDone(found.folder, found.id, done);
       return textResult(`Task "${found.title}" is now ${done ? "done" : "open"}.`);

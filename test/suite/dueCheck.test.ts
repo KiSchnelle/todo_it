@@ -31,13 +31,19 @@ suite("tasksDueBy", () => {
   test("returns tasks due today", () => {
     const tasks = [task("a", { dueDate: today }), task("b", { dueDate: "2026-12-01" })];
     const due = tasksDueBy(tasks, today);
-    assert.deepStrictEqual(due.map((t) => t.id), ["a"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["a"],
+    );
   });
 
   test("returns overdue tasks", () => {
     const tasks = [task("late", { dueDate: "2026-06-20" })];
     const due = tasksDueBy(tasks, today);
-    assert.deepStrictEqual(due.map((t) => t.id), ["late"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["late"],
+    );
   });
 
   test("skips tasks without a due date", () => {
@@ -57,6 +63,9 @@ suite("tasksDueBy", () => {
     const expired = task("expired", { dueDate: yesterday, snoozedUntil: yesterday });
     const due = tasksDueBy([future, expired], today);
     // The expired-snooze task should fire; the still-snoozed task shouldn't.
-    assert.deepStrictEqual(due.map((t) => t.id), ["expired"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["expired"],
+    );
   });
 });

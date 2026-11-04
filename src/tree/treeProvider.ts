@@ -106,9 +106,7 @@ export class TodoTreeProvider implements vscode.TreeDataProvider<TreeNode> {
       case "scanFolder":
         return this.groupedChildren(this.matchesForFolder(node.folderUri));
       case "tagGroup":
-        return matchNodes(
-          this.matchesForFolder(node.folderUri).filter((m) => m.tag === node.tag),
-        );
+        return matchNodes(this.matchesForFolder(node.folderUri).filter((m) => m.tag === node.tag));
       case "fileGroup":
         return matchNodes(this.scanStore.matchesForUri(node.uri));
       default:

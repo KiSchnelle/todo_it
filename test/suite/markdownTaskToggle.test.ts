@@ -48,10 +48,7 @@ suite("markMarkdownTaskDone", () => {
 
   test("no-ops when the line no longer matches `[ ]`", async () => {
     const uri = tempFile();
-    await vscode.workspace.fs.writeFile(
-      uri,
-      new TextEncoder().encode("- [x] already done\n"),
-    );
+    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode("- [x] already done\n"));
     const ok = await markMarkdownTaskDone(match(uri.toString(), 0));
     assert.strictEqual(ok, false);
     const text = await readText(uri);

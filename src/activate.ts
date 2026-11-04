@@ -27,10 +27,7 @@ export function activateCommon(
   const logger = new Logger();
   const config = new Configuration(context);
 
-  const taskStore = new TaskStore(
-    createTaskStorage(config.tasksStorage, context, logger),
-    logger,
-  );
+  const taskStore = new TaskStore(createTaskStorage(config.tasksStorage, context, logger), logger);
   const scanStore = new ScanStore();
   const scanner = createScanner(logger);
   const scanController = new ScanController(scanner, scanStore, config, logger);
@@ -53,11 +50,7 @@ export function activateCommon(
   });
 
   const syncGroupingContext = (): void => {
-    void vscode.commands.executeCommand(
-      "setContext",
-      "todoIt.grouping",
-      config.all.grouping,
-    );
+    void vscode.commands.executeCommand("setContext", "todoIt.grouping", config.all.grouping);
   };
   const updateMessage = (): void => {
     treeView.message = treeProvider.getMessage();
@@ -121,9 +114,7 @@ export function activateCommon(
     }),
     config.onDidChange((e) => {
       if (e.affectsConfiguration("todoIt.tasks.storage")) {
-        taskStore.setStorage(
-          createTaskStorage(config.tasksStorage, context, logger),
-        );
+        taskStore.setStorage(createTaskStorage(config.tasksStorage, context, logger));
       }
       if (
         e.affectsConfiguration("todoIt.tags") ||

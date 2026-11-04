@@ -24,9 +24,7 @@ function stripEol(text: string): string {
  * ripgrep emits `lines.bytes` (base64) instead of `lines.text` when a line is not valid UTF-8.
  * Decode it leniently (replacement chars) like the JS scanner does, instead of dropping the match.
  */
-function decodeLines(
-  lines: { text?: string; bytes?: string } | undefined,
-): string | undefined {
+function decodeLines(lines: { text?: string; bytes?: string } | undefined): string | undefined {
   if (!lines) {
     return undefined;
   }
@@ -34,9 +32,7 @@ function decodeLines(
     return lines.text;
   }
   if (typeof lines.bytes === "string") {
-    return new TextDecoder("utf-8", { fatal: false }).decode(
-      Buffer.from(lines.bytes, "base64"),
-    );
+    return new TextDecoder("utf-8", { fatal: false }).decode(Buffer.from(lines.bytes, "base64"));
   }
   return undefined;
 }
@@ -59,11 +55,7 @@ export function parseRgMatch(jsonLine: string): RgMatch | undefined {
   const path = event.data.path?.text;
   const lineText = decodeLines(event.data.lines);
   const lineNumber = event.data.line_number;
-  if (
-    typeof path !== "string" ||
-    typeof lineText !== "string" ||
-    typeof lineNumber !== "number"
-  ) {
+  if (typeof path !== "string" || typeof lineText !== "string" || typeof lineNumber !== "number") {
     return undefined;
   }
   return { path, lineNumber, lineText: stripEol(lineText) };

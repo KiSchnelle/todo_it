@@ -45,14 +45,24 @@ suite("extension", () => {
     const contributes = ext.packageJSON.contributes as Record<string, unknown>;
     assert.strictEqual(contributes.chatParticipants, undefined, "chat participants are deprecated");
     const tools = (contributes.languageModelTools as { name: string }[]).map((t) => t.name);
-    assert.deepStrictEqual(tools, ["todoIt_listTodos", "todoIt_listTasks", "todoIt_addTask", "todoIt_setTaskDone"]);
+    assert.deepStrictEqual(tools, [
+      "todoIt_listTodos",
+      "todoIt_listTasks",
+      "todoIt_addTask",
+      "todoIt_setTaskDone",
+    ]);
   });
 
   test("registers its language model tools", async () => {
     const ext = vscode.extensions.getExtension("KiSchnelle.todo-it");
     await ext?.activate();
     const names = vscode.lm.tools.map((t) => t.name);
-    for (const name of ["todoIt_listTodos", "todoIt_listTasks", "todoIt_addTask", "todoIt_setTaskDone"]) {
+    for (const name of [
+      "todoIt_listTodos",
+      "todoIt_listTasks",
+      "todoIt_addTask",
+      "todoIt_setTaskDone",
+    ]) {
       assert.ok(names.includes(name), `missing tool ${name}`);
     }
   });

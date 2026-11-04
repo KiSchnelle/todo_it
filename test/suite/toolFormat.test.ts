@@ -74,7 +74,10 @@ suite("toolFormat: todos", () => {
     const out = renderMatches(matches.slice(0, 1), 3, (m) => `${pathOf(m)}:${m.line + 1}`);
     assert.ok(out.startsWith("3 matching TODO comments (showing the first 1):"));
     assert.ok(out.includes("- [TODO] auth.ts:5 — refactor auth"));
-    assert.strictEqual(renderMatches([], 0, () => ""), "No matching TODO comments found in the workspace.");
+    assert.strictEqual(
+      renderMatches([], 0, () => ""),
+      "No matching TODO comments found in the workspace.",
+    );
   });
 });
 
@@ -95,17 +98,29 @@ suite("toolFormat: tasks", () => {
   });
 
   test("status done / all / due", () => {
-    assert.deepStrictEqual(filterTasks(tasks, { status: "done" }, today).map((t) => t.id), ["done"]);
+    assert.deepStrictEqual(
+      filterTasks(tasks, { status: "done" }, today).map((t) => t.id),
+      ["done"],
+    );
     assert.strictEqual(filterTasks(tasks, { status: "all" }, today).length, 5);
-    assert.deepStrictEqual(filterTasks(tasks, { status: "due" }, today).map((t) => t.id), ["late", "today"]);
+    assert.deepStrictEqual(
+      filterTasks(tasks, { status: "due" }, today).map((t) => t.id),
+      ["late", "today"],
+    );
   });
 
   test("query matches title and note", () => {
-    assert.deepStrictEqual(filterTasks(tasks, { query: "readme" }, today).map((t) => t.id), ["open"]);
+    assert.deepStrictEqual(
+      filterTasks(tasks, { query: "readme" }, today).map((t) => t.id),
+      ["open"],
+    );
   });
 
   test("renderTask includes id, priority, overdue marker, and snooze", () => {
-    assert.strictEqual(renderTask(tasks[2], today), "- Pay invoice (id: late, priority: high, OVERDUE (due 2026-06-01))");
+    assert.strictEqual(
+      renderTask(tasks[2], today),
+      "- Pay invoice (id: late, priority: high, OVERDUE (due 2026-06-01))",
+    );
     assert.ok(renderTask(tasks[4], today).includes("snoozed until 2026-07-01"));
     assert.ok(renderTask(tasks[0], today).includes("\n  note: README section"));
   });
@@ -119,7 +134,10 @@ suite("toolFormat: tasks", () => {
     const multi = renderTaskGroups(groups, today, true);
     assert.ok(multi.includes("## a"));
     assert.ok(!multi.includes("## b"));
-    assert.strictEqual(renderTaskGroups([{ folder: "a", tasks: [] }], today, false), "No matching tasks.");
+    assert.strictEqual(
+      renderTaskGroups([{ folder: "a", tasks: [] }], today, false),
+      "No matching tasks.",
+    );
   });
 });
 
@@ -135,7 +153,10 @@ suite("toolFormat: validation", () => {
     assert.ok(validateAddTask({ title: "  " }));
     assert.ok(validateAddTask({ title: "x", priority: "urgent" as never }));
     assert.ok(validateAddTask({ title: "x", dueDate: "next week" }));
-    assert.strictEqual(validateAddTask({ title: "x", priority: "high", dueDate: "2026-12-31" }), undefined);
+    assert.strictEqual(
+      validateAddTask({ title: "x", priority: "high", dueDate: "2026-12-31" }),
+      undefined,
+    );
   });
 });
 
@@ -145,7 +166,10 @@ suite("toolFormat: input hardening", () => {
       const bad = { title: "x", [key]: { a: 1 } } as unknown as AddTaskInput;
       assert.ok(validateAddTask(bad), key);
     }
-    assert.strictEqual(validateAddTask({ title: "x", note: "n", parentId: "p", folder: "f" }), undefined);
+    assert.strictEqual(
+      validateAddTask({ title: "x", note: "n", parentId: "p", folder: "f" }),
+      undefined,
+    );
   });
 
   test("validateAddTask caps title and note length", () => {
@@ -174,8 +198,12 @@ suite("toolFormat: input hardening", () => {
       inputSchema: { properties: Record<string, { enum?: string[] }> };
     }[];
     const byName = (n: string) => tools.find((t) => t.name === n)!;
-    assert.deepStrictEqual(byName("todoIt_listTasks").inputSchema.properties.status.enum, [...TASK_STATUSES]);
-    assert.deepStrictEqual(byName("todoIt_addTask").inputSchema.properties.priority.enum, [...PRIORITIES]);
+    assert.deepStrictEqual(byName("todoIt_listTasks").inputSchema.properties.status.enum, [
+      ...TASK_STATUSES,
+    ]);
+    assert.deepStrictEqual(byName("todoIt_addTask").inputSchema.properties.priority.enum, [
+      ...PRIORITIES,
+    ]);
     assert.strictEqual(byName("todoIt_listTodos").toolReferenceName, "todoComments");
   });
 });

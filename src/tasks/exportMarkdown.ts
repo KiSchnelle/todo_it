@@ -23,10 +23,7 @@ interface ExportOptions {
  * in a single "Done" section. Subtasks render as indented children under their
  * parent. Empty input produces just the heading + an "_(no tasks)_" line.
  */
-export function renderTasksAsMarkdown(
-  tasks: readonly ManualTask[],
-  opts: ExportOptions,
-): string {
+export function renderTasksAsMarkdown(tasks: readonly ManualTask[], opts: ExportOptions): string {
   const out: string[] = [opts.heading, ""];
   if (opts.subheading) {
     out.push(opts.subheading, "");

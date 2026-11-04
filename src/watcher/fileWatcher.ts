@@ -35,10 +35,7 @@ export class FileWatcher {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument((doc) => this.onSaved(doc)),
       config.onDidChange((e) => {
-        if (
-          e.affectsConfiguration("todoIt.include") ||
-          e.affectsConfiguration("todoIt.exclude")
-        ) {
+        if (e.affectsConfiguration("todoIt.include") || e.affectsConfiguration("todoIt.exclude")) {
           this.filter = undefined;
         }
       }),
@@ -81,24 +78,17 @@ export class FileWatcher {
   private getFilter(): PathFilter {
     if (!this.filter) {
       const all = this.config.all;
-      this.filter = createPathFilter(all.includeGlobs, [
-        ...all.excludeGlobs,
-        ...ALWAYS_EXCLUDE,
-      ]);
+      this.filter = createPathFilter(all.includeGlobs, [...all.excludeGlobs, ...ALWAYS_EXCLUDE]);
     }
     return this.filter;
   }
 
   private isExcluded(uri: vscode.Uri): boolean {
-    return this.getFilter().isExcluded(
-      vscode.workspace.asRelativePath(uri, false),
-    );
+    return this.getFilter().isExcluded(vscode.workspace.asRelativePath(uri, false));
   }
 
   private isIncludedFile(uri: vscode.Uri): boolean {
-    return this.getFilter().isIncluded(
-      vscode.workspace.asRelativePath(uri, false),
-    );
+    return this.getFilter().isIncluded(vscode.workspace.asRelativePath(uri, false));
   }
 
   private onChanged(folder: vscode.WorkspaceFolder, uri: vscode.Uri): void {
@@ -144,10 +134,7 @@ export class FileWatcher {
       clearTimeout(this.timer);
     }
     // Read the delay at schedule time so a changed setting applies without dropping queued work.
-    this.timer = setTimeout(
-      () => this.flush(),
-      Math.max(0, this.config.all.debounceMs),
-    );
+    this.timer = setTimeout(() => this.flush(), Math.max(0, this.config.all.debounceMs));
   }
 
   private flush(): void {

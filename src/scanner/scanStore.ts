@@ -2,10 +2,7 @@ import { ScannedFileResult, TagMatch } from "../models/types";
 
 /** True when `uri` equals `prefixUri` or is a descendant of it. */
 export function isSameOrUnder(uri: string, prefixUri: string): boolean {
-  return (
-    uri === prefixUri ||
-    uri.startsWith(prefixUri.endsWith("/") ? prefixUri : `${prefixUri}/`)
-  );
+  return uri === prefixUri || uri.startsWith(prefixUri.endsWith("/") ? prefixUri : `${prefixUri}/`);
 }
 
 export interface Unsubscribe {
@@ -20,10 +17,7 @@ export class ScanStore {
   private readonly truncatedFolders = new Set<string>();
   private capped = false;
   /** Last time an incremental scan/removal touched a URI (guards against stale folder snapshots). */
-  private readonly touched = new Map<
-    string,
-    { at: number; folderUri: string }
-  >();
+  private readonly touched = new Map<string, { at: number; folderUri: string }>();
   // Caches invalidated on emit() — rebuilding both takes O(N matches) per render
   // and grew noticeable on 5k-match workspaces. Cleared every time data changes.
   private allCache: readonly ScannedFileResult[] | undefined;
@@ -155,17 +149,10 @@ export class ScanStore {
   }
 
   /** Replace every result at or under `prefixUri` (a directory) with `results`. */
-  replaceUnder(
-    prefixUri: string,
-    folderUri: string,
-    results: ScannedFileResult[],
-  ): void {
+  replaceUnder(prefixUri: string, folderUri: string, results: ScannedFileResult[]): void {
     let changed = false;
     for (const uri of [...this.byUri.keys()]) {
-      if (
-        isSameOrUnder(uri, prefixUri) &&
-        !results.some((r) => r.uri === uri)
-      ) {
+      if (isSameOrUnder(uri, prefixUri) && !results.some((r) => r.uri === uri)) {
         this.byUri.delete(uri);
         this.touch(uri, folderUri);
         changed = true;
@@ -183,9 +170,7 @@ export class ScanStore {
 
   removeFile(uri: string, knownFolderUri?: string): void {
     const folderUri =
-      this.byUri.get(uri)?.folderUri ??
-      knownFolderUri ??
-      this.touched.get(uri)?.folderUri;
+      this.byUri.get(uri)?.folderUri ?? knownFolderUri ?? this.touched.get(uri)?.folderUri;
     if (folderUri !== undefined) {
       this.touch(uri, folderUri);
     }
@@ -252,9 +237,7 @@ export class ScanStore {
 
   allMatches(): readonly TagMatch[] {
     if (!this.allMatchesCache) {
-      this.allMatchesCache = Object.freeze(
-        this.all().flatMap((r) => r.matches),
-      );
+      this.allMatchesCache = Object.freeze(this.all().flatMap((r) => r.matches));
     }
     return this.allMatchesCache;
   }

@@ -2,11 +2,7 @@ import * as assert from "node:assert";
 import { ScannedFileResult } from "../../src/models/types";
 import { ScanStore } from "../../src/scanner/scanStore";
 
-function result(
-  uri: string,
-  folderUri: string,
-  count: number,
-): ScannedFileResult {
+function result(uri: string, folderUri: string, count: number): ScannedFileResult {
   return {
     uri,
     folderUri,
