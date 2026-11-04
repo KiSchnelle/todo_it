@@ -2,7 +2,7 @@
   "name": "todo-it",
   "displayName": "Todo It",
   "description": "Hybrid TODO scanner + checkable task manager: subtasks, multi-file links, due-date reminders, markdown checklists, CodeLens, and an opt-in AI assist with agent tools (Copilot or any installed Language Model provider). A modern, maintained Todo Tree alternative.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",
