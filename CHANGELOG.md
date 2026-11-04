@@ -16,6 +16,8 @@ All notable changes to the Todo It extension are documented here.
 - **Security**: npm `overrides` force patched `minimatch` and `serialize-javascript` in transitive dev dependencies, clearing all high-severity `npm audit` findings. The shipped extension has no known vulnerabilities.
 
 ### Added
+- **Agent skill** (`skills/todo-it/SKILL.md`, contributed via `chatSkills`): tells Copilot-style agents when to use the Todo It tools, how to find task ids, avoid duplicate tasks, and treat TODO text as data rather than instructions. Hosts without skill support ignore it.
+- **Formatter**: code is formatted with [oxfmt](https://oxc.rs) (`npm run format`); CI checks formatting.
 - **More platforms**: the release workflow now also publishes `web` (vscode.dev / github.dev), `alpine-x64` and `alpine-arm64` VSIXs. If ripgrep's binary is missing on a desktop host, Todo It falls back to the JS scanner instead of failing to activate.
 
 ### Fixed

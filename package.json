@@ -234,6 +234,11 @@
         }
       }
     ],
+    "chatSkills": [
+      {
+        "path": "./skills/todo-it/SKILL.md"
+      }
+    ],
     "commands": [
       {
         "command": "todoIt.refresh",
