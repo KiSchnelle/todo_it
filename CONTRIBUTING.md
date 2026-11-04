@@ -22,6 +22,7 @@ Press **F5** in VS Code to launch an Extension Development Host with Todo It loa
 | `npm run compile` | Build `dist/extension.js` once |
 | `npm run watch` | Build + watch for changes (use with F5) |
 | `npm run check-types` | TypeScript type check (no emit) |
+| `npm run format` / `format:check` | oxfmt (`.oxfmtrc.json`, width 100); CI fails on unformatted code |
 | `npm run lint` | oxlint with type-aware rules (`oxlint --type-aware`) |
 | `npm test` | Build extension + tests, run the full host suite (Linux/macOS/Windows × Node 22/24 in CI) |
 | `npm run vsix` | Produce `todo-it.vsix` (runs typecheck + lint + production build first) |
