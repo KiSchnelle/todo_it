@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { registerChatParticipant } from "./ai/chatParticipant";
+import { registerLanguageModelTools } from "./ai/lmTools";
 import { TodoCodeLensProvider } from "./codelens/todoCodeLensProvider";
 import { registerCommands } from "./commands";
 import { Configuration } from "./config/configuration";
@@ -68,7 +68,7 @@ export function activateCommon(
     statusBar,
     codeLensProvider,
     dueNotifier,
-    registerChatParticipant(scanStore, taskStore, config),
+    registerLanguageModelTools(scanStore, taskStore, config),
     registerCheckboxHandler(treeView, taskStore, treeProvider),
     taskStore.onDidChange(() => treeProvider.refresh()),
     scanStore.onDidChange(() => {

@@ -4,6 +4,18 @@ All notable changes to the Todo It extension are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Replaced the `@todo-it` chat participant with Language Model tools.** VS Code deprecated chat participants and they are not supported in the Copilot harness (you'd see a *"Replace Chat Participant"* warning). Todo It now contributes four agent tools instead, usable automatically by the agent or explicitly via `#` references in any chat:
+  - `#todos` (`todoIt_listTodos`) — scanned TODO comments, filterable by `tag` / `query`, capped by `todoIt.ai.maxFindings`.
+  - `#tasks` (`todoIt_listTasks`) — manual tasks with ids, priority, due/overdue, snooze and subtask info; `status: open | done | all | due`.
+  - `#addTask` (`todoIt_addTask`) — create a task or subtask (with confirmation).
+  - `#completeTask` (`todoIt_setTaskDone`) — mark a task done / reopen it, cascading to subtasks (with confirmation).
+- **Dependencies refreshed**: `@vscode/vsce` 4, `mocha` 12, `minimatch` 11, `eslint` 10.14, `typescript-eslint` 8.72, `esbuild` 0.28.2, `ovsx` 1.3, `@vscode/test-electron` 3.1, `@types/node` 22.20.5. TypeScript stays on 6.0 (typescript-eslint doesn't support TypeScript 7 yet) and `@types/vscode` stays pinned to the `engines.vscode` floor (1.120).
+- **Security**: npm `overrides` force patched `minimatch` and `serialize-javascript` in transitive dev dependencies, clearing all high-severity `npm audit` findings. The shipped extension has no known vulnerabilities.
+
+### Removed
+- `@todo-it` chat participant and its `/summarize` and `/overdue` slash commands (see above for replacements; `AI: Summarize Found in Code` is unchanged).
+
 ## [0.1.0] - 2026-06-24
 
 A major release that takes Todo It from "TODO scanner + simple task list" to a full task manager with subtasks, multi-file links, bulk operations, due-date reminders, markdown export, an opt-in AI suite, and a `@todo-it` chat participant. Bumping to 0.1.0 to reflect the breadth of the change.
