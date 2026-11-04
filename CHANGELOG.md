@@ -4,6 +4,9 @@ All notable changes to the Todo It extension are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Token-free Marketplace publishing**: releases now publish to the VS Marketplace with [Trusted Publishing](https://aka.ms/vsm/trustedpublishing) (GitHub OIDC) instead of a stored Personal Access Token, ahead of Azure DevOps retiring global PATs on 2026-12-01.
+
 ## [0.2.0] - 2026-11-04
 
 ### Changed
