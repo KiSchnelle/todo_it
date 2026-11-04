@@ -79,9 +79,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # One gated job publishes all VSIXs. The `marketplace` environment holds VSCE_PAT / OVSX_PAT,
-  # requires a reviewer's approval and only allows v* tags. It runs only if every platform built,
-  # and installs dependencies with --ignore-scripts so no package install script sees the tokens.
+  # One gated job publishes all VSIXs, only if every platform built. The `marketplace` environment
+  # requires a reviewer's approval, only allows v* tags, and holds OVSX_PAT. The VS Marketplace
+  # needs no stored token: it uses Trusted Publishing (GitHub OIDC), with a policy for
+  # KiSchnelle/todo_it, workflow publish.yml, environment `marketplace`. Dependencies are installed
+  # with --ignore-scripts so no package install script runs next to a credential.
   publish:
     name: Publish to VS Marketplace and Open VSX
     needs: package
@@ -90,6 +92,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      # Lets vsce exchange a short-lived GitHub OIDC token for a Marketplace credential.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -106,9 +110,7 @@ jobs:
           merge-multiple: true
           path: vsix
       - name: Publish to VS Marketplace
-        run: npx vsce publish --skip-duplicate --packagePath vsix/*.vsix
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --oidc --skip-duplicate --packagePath vsix/*.vsix
       # Open VSX is the registry for Cursor, Antigravity, Windsurf/Devin Desktop, Kiro, Trae and
       # VSCodium, so a failure here fails the run. Re-running is safe: both steps skip duplicates.
       - name: Publish to Open VSX
