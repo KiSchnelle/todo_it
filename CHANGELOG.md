@@ -17,6 +17,7 @@ All notable changes to the Todo It extension are documented here.
 
 ### Added
 - **Agent skill** (`skills/todo-it/SKILL.md`, contributed via `chatSkills`): tells Copilot-style agents when to use the Todo It tools, how to find task ids, avoid duplicate tasks, and treat TODO text as data rather than instructions. Hosts without skill support ignore it.
+- **Safer releases**: platform VSIXs are built in jobs with no access to publishing tokens; a single publish job, gated by the `marketplace` environment (reviewer approval, `v*` tags only), publishes them all — and only if every platform built. Its dependency install skips package install scripts.
 - **Formatter**: code is formatted with [oxfmt](https://oxc.rs) (`npm run format`); CI checks formatting.
 - **More platforms**: the release workflow now also publishes `web` (vscode.dev / github.dev), `alpine-x64` and `alpine-arm64` VSIXs. If ripgrep's binary is missing on a desktop host, Todo It falls back to the JS scanner instead of failing to activate.
 
