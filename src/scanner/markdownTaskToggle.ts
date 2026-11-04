@@ -26,6 +26,10 @@ export async function markMarkdownTaskDone(match: TagMatch): Promise<boolean> {
     return false;
   }
   const text = doc.lineAt(match.line).text;
+  // The document may have shifted since the scan; never tick a different task.
+  if (text !== match.lineText) {
+    return false;
+  }
   const m = MD_TASK_CHECKBOX.exec(text);
   if (!m) {
     return false;

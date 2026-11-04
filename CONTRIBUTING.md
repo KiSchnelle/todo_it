@@ -22,14 +22,15 @@ Press **F5** in VS Code to launch an Extension Development Host with Todo It loa
 | `npm run compile` | Build `dist/extension.js` once |
 | `npm run watch` | Build + watch for changes (use with F5) |
 | `npm run check-types` | TypeScript type check (no emit) |
-| `npm run lint` | ESLint |
+| `npm run format` / `format:check` | oxfmt (`.oxfmtrc.json`, width 100); CI fails on unformatted code |
+| `npm run lint` | oxlint with type-aware rules (`oxlint --type-aware`) |
 | `npm test` | Build extension + tests, run the full host suite (Linux/macOS/Windows × Node 22/24 in CI) |
 | `npm run vsix` | Produce `todo-it.vsix` (runs typecheck + lint + production build first) |
 
 ## Coding conventions
 
 - TypeScript, strict mode. `npm run check-types` must pass.
-- ESLint flat config (`eslint.config.mjs`); `npm run lint` must pass.
+- oxlint config (`.oxlintrc.json`); `npm run lint` must pass. Type-aware rules run via `oxlint-tsgolint` (TypeScript 7).
 - Keep diffs focused — one logical change per PR.
 - Add or update tests for behavior changes:
   - Pure logic (`src/util/`, `src/scanner/`, `src/tasks/`) → unit tests in `test/suite/*.test.ts`.

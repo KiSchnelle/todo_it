@@ -16,8 +16,12 @@ function task(id: string, props: Partial<ManualTask>): ManualTask {
 
 suite("isoDate", () => {
   test("returns YYYY-MM-DD from a Date", () => {
-    const d = new Date("2026-06-24T15:30:00Z");
+    const d = new Date(2026, 5, 24, 23, 30);
     assert.strictEqual(isoDate(d), "2026-06-24");
+  });
+
+  test("uses the local date, not UTC", () => {
+    assert.strictEqual(isoDate(new Date(2026, 0, 5, 0, 10)), "2026-01-05");
   });
 });
 
@@ -27,13 +31,19 @@ suite("tasksDueBy", () => {
   test("returns tasks due today", () => {
     const tasks = [task("a", { dueDate: today }), task("b", { dueDate: "2026-12-01" })];
     const due = tasksDueBy(tasks, today);
-    assert.deepStrictEqual(due.map((t) => t.id), ["a"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["a"],
+    );
   });
 
   test("returns overdue tasks", () => {
     const tasks = [task("late", { dueDate: "2026-06-20" })];
     const due = tasksDueBy(tasks, today);
-    assert.deepStrictEqual(due.map((t) => t.id), ["late"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["late"],
+    );
   });
 
   test("skips tasks without a due date", () => {
@@ -53,6 +63,9 @@ suite("tasksDueBy", () => {
     const expired = task("expired", { dueDate: yesterday, snoozedUntil: yesterday });
     const due = tasksDueBy([future, expired], today);
     // The expired-snooze task should fire; the still-snoozed task shouldn't.
-    assert.deepStrictEqual(due.map((t) => t.id), ["expired"]);
+    assert.deepStrictEqual(
+      due.map((t) => t.id),
+      ["expired"],
+    );
   });
 });

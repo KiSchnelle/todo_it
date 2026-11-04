@@ -11,15 +11,15 @@ suite("stripJsonFences", () => {
   });
 
   test("strips a plain triple-backtick fence", () => {
-    assert.strictEqual(stripJsonFences("```\n{\"a\":1}\n```"), `{"a":1}`);
+    assert.strictEqual(stripJsonFences('```\n{"a":1}\n```'), `{"a":1}`);
   });
 
   test("strips a ```json fence", () => {
-    assert.strictEqual(stripJsonFences("```json\n{\"a\":1}\n```"), `{"a":1}`);
+    assert.strictEqual(stripJsonFences('```json\n{"a":1}\n```'), `{"a":1}`);
   });
 
   test("trims surrounding whitespace", () => {
-    assert.strictEqual(stripJsonFences("\n  {\"a\":1}  \n"), `{"a":1}`);
+    assert.strictEqual(stripJsonFences('\n  {"a":1}  \n'), `{"a":1}`);
   });
 });
 
@@ -39,10 +39,7 @@ suite("parsePriorityResponse", () => {
   });
 
   test("rejects unknown priorities", () => {
-    assert.strictEqual(
-      parsePriorityResponse(`{"priority":"urgent","reason":"x"}`),
-      undefined,
-    );
+    assert.strictEqual(parsePriorityResponse(`{"priority":"urgent","reason":"x"}`), undefined);
   });
 
   test("rejects malformed JSON", () => {
@@ -61,16 +58,12 @@ suite("parseExpandedTaskResponse", () => {
   });
 
   test("accepts title + note + priority", () => {
-    const r = parseExpandedTaskResponse(
-      `{"title":"Fix it","note":"because","priority":"medium"}`,
-    );
+    const r = parseExpandedTaskResponse(`{"title":"Fix it","note":"because","priority":"medium"}`);
     assert.deepStrictEqual(r, { title: "Fix it", note: "because", priority: "medium" });
   });
 
   test("drops an invalid priority but still returns title + note", () => {
-    const r = parseExpandedTaskResponse(
-      `{"title":"Fix it","note":"because","priority":"urgent"}`,
-    );
+    const r = parseExpandedTaskResponse(`{"title":"Fix it","note":"because","priority":"urgent"}`);
     assert.deepStrictEqual(r, { title: "Fix it", note: "because", priority: undefined });
   });
 

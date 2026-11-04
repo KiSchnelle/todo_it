@@ -47,3 +47,20 @@ suite("rgJsonParser", () => {
     assert.deepStrictEqual(seen, ["src/app.ts"]);
   });
 });
+
+suite("rgJsonParser bytes", () => {
+  test("decodes lines.bytes for non-UTF-8 lines", async () => {
+    const { parseRgMatch } = await import("../../src/scanner/rgJsonParser");
+    const bytes = Buffer.from([
+      0x2f, 0x2f, 0x20, 0x54, 0x4f, 0x44, 0x4f, 0x20, 0x63, 0x61, 0x66, 0xe9, 0x0a,
+    ]).toString("base64");
+    const m = parseRgMatch(
+      JSON.stringify({
+        type: "match",
+        data: { path: { text: "a.txt" }, lines: { bytes }, line_number: 3 },
+      }),
+    );
+    assert.ok(m);
+    assert.ok(m.lineText.startsWith("// TODO caf"));
+  });
+});

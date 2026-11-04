@@ -11,13 +11,30 @@ interface RgJsonEvent {
   type?: string;
   data?: {
     path?: { text?: string };
-    lines?: { text?: string };
+    lines?: { text?: string; bytes?: string };
     line_number?: number;
   };
 }
 
 function stripEol(text: string): string {
   return text.replace(/\r?\n$/, "");
+}
+
+/**
+ * ripgrep emits `lines.bytes` (base64) instead of `lines.text` when a line is not valid UTF-8.
+ * Decode it leniently (replacement chars) like the JS scanner does, instead of dropping the match.
+ */
+function decodeLines(lines: { text?: string; bytes?: string } | undefined): string | undefined {
+  if (!lines) {
+    return undefined;
+  }
+  if (typeof lines.text === "string") {
+    return lines.text;
+  }
+  if (typeof lines.bytes === "string") {
+    return new TextDecoder("utf-8", { fatal: false }).decode(Buffer.from(lines.bytes, "base64"));
+  }
+  return undefined;
 }
 
 /** Parses a single ripgrep `--json` NDJSON line, returning a match event or `undefined`. */
@@ -36,7 +53,7 @@ export function parseRgMatch(jsonLine: string): RgMatch | undefined {
     return undefined;
   }
   const path = event.data.path?.text;
-  const lineText = event.data.lines?.text;
+  const lineText = decodeLines(event.data.lines);
   const lineNumber = event.data.line_number;
   if (typeof path !== "string" || typeof lineText !== "string" || typeof lineNumber !== "number") {
     return undefined;

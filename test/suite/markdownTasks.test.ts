@@ -3,7 +3,12 @@ import { isMarkdownUri, matchMarkdownTask, MD_TASK_TAG } from "../../src/scanner
 
 suite("matchMarkdownTask", () => {
   test("matches dash, star, plus, and ordered checkboxes", () => {
-    for (const line of ["- [ ] write tests", "* [ ] write tests", "+ [ ] write tests", "1. [ ] write tests"]) {
+    for (const line of [
+      "- [ ] write tests",
+      "* [ ] write tests",
+      "+ [ ] write tests",
+      "1. [ ] write tests",
+    ]) {
       const m = matchMarkdownTask(line);
       assert.ok(m, `should match: ${line}`);
       assert.strictEqual(m?.text, "write tests");
@@ -50,5 +55,16 @@ suite("isMarkdownUri", () => {
 suite("MD_TASK_TAG", () => {
   test("is the synthetic tag used for grouping", () => {
     assert.strictEqual(MD_TASK_TAG, "MD-TASK");
+  });
+});
+
+suite("matchMarkdownTask performance", () => {
+  test("long whitespace runs do not backtrack quadratically", () => {
+    const line = "- [ ] a" + " ".repeat(100000) + "x";
+    const t0 = Date.now();
+    const m = matchMarkdownTask(line);
+    assert.ok(Date.now() - t0 < 500);
+    assert.ok(m);
+    assert.strictEqual(matchMarkdownTask("- [ ] a" + " ".repeat(100000))?.text, "a");
   });
 });

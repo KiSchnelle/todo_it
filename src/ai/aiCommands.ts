@@ -37,6 +37,18 @@ async function readContext(uri: string, line: number, contextLines: number): Pro
   }
 }
 
+function isCancellation(err: unknown): boolean {
+  return err instanceof vscode.CancellationError;
+}
+
+/** Shows an AI error unless it is just the user cancelling. */
+function reportAiError(err: unknown): void {
+  if (isCancellation(err)) {
+    return;
+  }
+  void vscode.window.showErrorMessage(`Todo It AI: ${(err as Error).message}`);
+}
+
 async function runWithProgress<T>(
   title: string,
   work: (token: vscode.CancellationToken) => Promise<T>,
@@ -84,7 +96,7 @@ export async function summarizeTodos(scanStore: ScanStore, config: Configuration
       const result = await chat(model, prompt, token);
       await showMarkdownResponse("TODO Summary", result + truncatedNote);
     } catch (err) {
-      void vscode.window.showErrorMessage(`Todo It AI: ${(err as Error).message}`);
+      reportAiError(err);
     }
   });
 }
@@ -126,16 +138,21 @@ export async function suggestTaskPriority(
     (node.task.note ? `Task note: ${node.task.note}\n` : "") +
     (context ? `\nSurrounding code:\n\`\`\`\n${context}\n\`\`\`\n` : "");
 
+  let failed = false;
   const suggestion = await runWithProgress("Todo It: suggesting priority…", async (token) => {
     try {
       const text = await chat(model, prompt, token);
       return parsePriorityResponse(text);
     } catch (err) {
-      void vscode.window.showErrorMessage(`Todo It AI: ${(err as Error).message}`);
+      failed = true;
+      reportAiError(err);
       return undefined;
     }
   });
   if (!suggestion) {
+    if (failed) {
+      return; // cancelled or already reported
+    }
     void vscode.window.showInformationMessage(
       "Todo It AI: couldn't parse a priority suggestion — try again.",
     );
@@ -178,10 +195,7 @@ export async function trackAsTaskAI(
   }
 
   const context = await readContext(node.match.uri, node.match.line, config.all.aiContextLines);
-  const originalComment = truncate(
-    node.match.text || node.match.lineText.trim(),
-    MAX_FINDING_TEXT,
-  );
+  const originalComment = truncate(node.match.text || node.match.lineText.trim(), MAX_FINDING_TEXT);
   const prompt =
     `You are turning a short code comment into a fuller task description. The comment may be cryptic — use the surrounding code as context.\n\n` +
     `Tag: ${node.match.tag}\n` +
@@ -194,18 +208,27 @@ export async function trackAsTaskAI(
     ` "priority": "low" | "medium" | "high"}\n\n` +
     `For priority, treat FIXME/BUG and wording about crashes/security/data-loss as "high"; clear improvements with real impact as "medium"; cleanup/polish as "low".`;
 
+  let cancelled = false;
   const expanded = await runWithProgress("Todo It: expanding TODO with AI…", async (token) => {
     try {
       const text = await chat(model, prompt, token);
       return parseExpandedTaskResponse(text);
     } catch (err) {
-      void vscode.window.showErrorMessage(`Todo It AI: ${(err as Error).message}`);
+      if (isCancellation(err)) {
+        cancelled = true;
+      } else {
+        reportAiError(err);
+      }
       return undefined;
     }
   });
+  if (cancelled) {
+    return; // the user pressed Cancel — don't create a task
+  }
 
-  // Always create the task — fall back to the plain comment text if expansion failed.
-  const fallbackTitle = node.match.text.trim() || `${node.match.tag}: ${node.match.lineText.trim()}`;
+  // Create the task — fall back to the plain comment text if expansion failed.
+  const fallbackTitle =
+    node.match.text.trim() || `${node.match.tag}: ${node.match.lineText.trim()}`;
   const task = await taskStore.addTask(folder, {
     title: expanded?.title ?? fallbackTitle,
     note: expanded?.note,
@@ -227,7 +250,9 @@ export async function trackAsTaskAI(
 
 export async function explainMatch(config: Configuration, node?: TreeNode): Promise<void> {
   if (node?.kind !== "match") {
-    void vscode.window.showInformationMessage("Todo It AI: right-click a scanned todo to explain it.");
+    void vscode.window.showInformationMessage(
+      "Todo It AI: right-click a scanned todo to explain it.",
+    );
     return;
   }
   const match: TagMatch = node.match;
@@ -250,7 +275,7 @@ export async function explainMatch(config: Configuration, node?: TreeNode): Prom
       const result = await chat(model, prompt, token);
       await showMarkdownResponse(`Explain ${match.tag} at ${location}`, result);
     } catch (err) {
-      void vscode.window.showErrorMessage(`Todo It AI: ${(err as Error).message}`);
+      reportAiError(err);
     }
   });
 }

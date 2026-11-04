@@ -10,9 +10,7 @@ export function findExistingLinkedTask(
   tasks: readonly ManualTask[],
   match: TagMatch,
 ): ManualTask | undefined {
-  return tasks.find(
-    (t) => t.links?.some((l) => l.uri === match.uri && l.line === match.line),
-  );
+  return tasks.find((t) => t.links?.some((l) => l.uri === match.uri && l.line === match.line));
 }
 
 /** True when `candidate` exactly matches an entry already in `existing` (uri + line). */

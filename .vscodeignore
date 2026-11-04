@@ -1,3 +1,7 @@
+.claude/**
+.oxlintrc.json
+.oxfmtrc.json
+.git-blame-ignore-revs
 .vscode/**
 .vscode-test/**
 .github/**

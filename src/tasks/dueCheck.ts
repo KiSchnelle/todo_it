@@ -1,8 +1,10 @@
 import { ManualTask } from "../models/types";
 
-/** YYYY-MM-DD for any Date. */
+/** YYYY-MM-DD for any Date, using the LOCAL calendar date (dueDate values are local dates). */
 export function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${String(d.getFullYear()).padStart(4, "0")}-${mm}-${dd}`;
 }
 
 /** Returns a new Date `n` days after `d`. */

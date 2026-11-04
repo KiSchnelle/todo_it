@@ -1,9 +1,6 @@
 import * as assert from "node:assert";
 import { ManualTask, TagMatch, TaskLink } from "../../src/models/types";
-import {
-  findExistingLinkedTask,
-  hasExactLink,
-} from "../../src/tasks/linkedTaskLookup";
+import { findExistingLinkedTask, hasExactLink } from "../../src/tasks/linkedTaskLookup";
 
 function task(id: string, link: { uri: string; line: number } | undefined): ManualTask {
   return {
@@ -51,10 +48,7 @@ suite("findExistingLinkedTask", () => {
   });
 
   test("returns the first match when multiple link to the same line (dedupe edge case)", () => {
-    const tasks = [
-      task("a", { uri: "u1", line: 5 }),
-      task("b", { uri: "u1", line: 5 }),
-    ];
+    const tasks = [task("a", { uri: "u1", line: 5 }), task("b", { uri: "u1", line: 5 })];
     const m = match("u1", 5);
     assert.strictEqual(findExistingLinkedTask(tasks, m)?.id, "a");
   });

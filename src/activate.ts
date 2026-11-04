@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { registerChatParticipant } from "./ai/chatParticipant";
+import { registerLanguageModelTools } from "./ai/lmTools";
 import { TodoCodeLensProvider } from "./codelens/todoCodeLensProvider";
 import { registerCommands } from "./commands";
 import { Configuration } from "./config/configuration";
@@ -43,6 +43,9 @@ export function activateCommon(
     treeDataProvider: treeProvider,
     showCollapseAll: true,
     canSelectMany: true, // enables multi-select for bulk task operations
+    // TaskStore.setDone cascades to subtasks itself; VS Code's automatic parent/child
+    // propagation would otherwise e.g. reopen every sibling when one subtask is unchecked.
+    manageCheckboxStateManually: true,
     dragAndDropController: new TaskDnDController(taskStore),
   });
 
@@ -56,7 +59,13 @@ export function activateCommon(
   // Filter starts cleared; this also clears any stale context from a previous session.
   void vscode.commands.executeCommand("setContext", "todoIt.hasFilter", false);
 
-  registerCommands(context, { taskStore, scanController, scanStore, config, treeProvider });
+  registerCommands(context, {
+    taskStore,
+    scanController,
+    scanStore,
+    config,
+    treeProvider,
+  });
 
   context.subscriptions.push(
     logger,
@@ -68,7 +77,7 @@ export function activateCommon(
     statusBar,
     codeLensProvider,
     dueNotifier,
-    registerChatParticipant(scanStore, taskStore, config),
+    registerLanguageModelTools(scanStore, taskStore, config),
     registerCheckboxHandler(treeView, taskStore, treeProvider),
     taskStore.onDidChange(() => treeProvider.refresh()),
     scanStore.onDidChange(() => {
@@ -80,6 +89,7 @@ export function activateCommon(
     vscode.workspace.onDidChangeWorkspaceFolders((e) => {
       fileWatcher.syncFolders();
       for (const removed of e.removed) {
+        scanController.cancelFolder(removed.uri.toString());
         scanStore.removeFolder(removed.uri.toString());
       }
       for (const added of e.added) {

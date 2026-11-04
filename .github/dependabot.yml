@@ -19,13 +19,16 @@ updates:
     groups:
       types:
         patterns: ["@types/*"]
-      eslint:
-        patterns: ["eslint", "typescript-eslint", "@typescript-eslint/*"]
+      oxlint:
+        patterns: ["oxlint", "oxlint-tsgolint"]
       dev-deps:
         dependency-type: development
     ignore:
-      # @types/node must match the VS Code 1.120 runtime (Node 22) — don't auto-bump majors.
+      # @types/node must match the VS Code runtime (Node 22) — don't auto-bump majors.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       # @types/vscode is intentionally pinned to the engines.vscode floor.
       - dependency-name: "@types/vscode"
+      # minimatch is bundled and tied to the package.json override; move deliberately.
+      - dependency-name: "minimatch"
+        update-types: ["version-update:semver-major"]

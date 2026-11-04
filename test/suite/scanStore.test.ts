@@ -43,7 +43,10 @@ suite("scanStore", () => {
     store.replaceFile(result("u2", "f2", 1));
     store.replaceFolder("f1", [result("u3", "f1", 2)]);
     assert.deepStrictEqual(
-      store.all().map((r) => r.uri).sort(),
+      store
+        .all()
+        .map((r) => r.uri)
+        .sort(),
       ["u2", "u3"],
     );
   });
@@ -80,5 +83,43 @@ suite("scanStore", () => {
     const second = store.allMatches();
     assert.notStrictEqual(second, first);
     assert.strictEqual(second.length, 5);
+  });
+});
+
+suite("scanStore incremental safety", () => {
+  test("removeUnder removes a directory subtree only", () => {
+    const store = new ScanStore();
+    store.replaceFile(result("file:///a/src/x.ts", "f", 1));
+    store.replaceFile(result("file:///a/src2/y.ts", "f", 1));
+    store.removeUnder("file:///a/src");
+    assert.deepStrictEqual(
+      store.all().map((r) => r.uri),
+      ["file:///a/src2/y.ts"],
+    );
+  });
+  test("replaceFolder keeps entries touched after the scan started", () => {
+    const store = new ScanStore();
+    const startedAt = Date.now() - 10;
+    store.replaceFile(result("u1", "f", 1));
+    store.removeFile("u2", "f");
+    store.replaceFolder("f", [result("u1", "f", 5), result("u2", "f", 1)], {
+      startedAt,
+    });
+    assert.strictEqual(store.matchesForUri("u1").length, 1);
+    assert.strictEqual(store.matchesForUri("u2").length, 0);
+  });
+  test("truncated flag is per folder and set by replaceFolder", () => {
+    const store = new ScanStore();
+    store.replaceFolder("f", [], { truncated: true });
+    assert.strictEqual(store.truncated, true);
+    store.replaceFolder("f", []);
+    assert.strictEqual(store.truncated, false);
+  });
+  test("maxTotal caps incremental growth", () => {
+    const store = new ScanStore();
+    store.replaceFile(result("u1", "f", 3), 4);
+    store.replaceFile(result("u2", "f", 3), 4);
+    assert.strictEqual(store.all().length, 1);
+    assert.strictEqual(store.truncated, true);
   });
 });

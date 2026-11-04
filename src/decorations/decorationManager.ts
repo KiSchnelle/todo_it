@@ -10,6 +10,7 @@ const DEFAULT_COLOR = "#888888";
 export class DecorationManager {
   private readonly types = new Map<string, vscode.TextEditorDecorationType>();
   private enabled: boolean;
+  private applied = new WeakSet<vscode.TextEditor>();
   private readonly disposables: Array<{ dispose(): void }> = [];
 
   constructor(
@@ -68,6 +69,7 @@ export class DecorationManager {
       type.dispose();
     }
     this.types.clear();
+    this.applied = new WeakSet(); // new types have no decorations yet; force a full apply
     for (const tag of this.config.all.tags) {
       if (tag.tag) {
         this.types.set(tag.tag, this.createType(tag));
@@ -77,6 +79,12 @@ export class DecorationManager {
 
   private applyAll(): void {
     for (const editor of vscode.window.visibleTextEditors) {
+      // Scan positions come from disk; for unsaved editors VS Code has already moved
+      // the existing decorations as the user typed, so re-applying would misplace them.
+      // They are refreshed once the document is saved and rescanned.
+      if (editor.document.isDirty && this.applied.has(editor)) {
+        continue;
+      }
       this.applyToEditor(editor);
     }
   }
@@ -94,6 +102,7 @@ export class DecorationManager {
         }
       }
     }
+    this.applied.add(editor);
     for (const [tag, type] of this.types) {
       editor.setDecorations(type, rangesByTag.get(tag) ?? []);
     }

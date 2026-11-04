@@ -1,8 +1,8 @@
 {
   "name": "todo-it",
   "displayName": "Todo It",
-  "description": "Hybrid TODO scanner + checkable task manager: subtasks, multi-file links, due-date reminders, markdown checklists, CodeLens, and an opt-in AI assist (Copilot or any installed Language Model provider). A modern, maintained Todo Tree alternative.",
-  "version": "0.1.0",
+  "description": "Hybrid TODO scanner + checkable task manager: subtasks, multi-file links, due-date reminders, markdown checklists, CodeLens, and an opt-in AI assist with agent tools (Copilot or any installed Language Model provider). A modern, maintained Todo Tree alternative.",
+  "version": "0.2.0",
   "license": "MIT",
   "publisher": "KiSchnelle",
   "author": "Kilian Schnelle",
@@ -15,7 +15,7 @@
   },
   "homepage": "https://github.com/KiSchnelle/todo_it#readme",
   "engines": {
-    "vscode": "^1.120.0"
+    "vscode": "^1.104.0"
   },
   "categories": [
     "Other",
@@ -42,7 +42,7 @@
     "ai",
     "copilot",
     "language model",
-    "chat participant",
+    "agent tools",
     "productivity"
   ],
   "main": "./dist/extension.js",
@@ -91,23 +91,152 @@
         "contents": "Open a folder or workspace to scan for todos and manage your tasks.\n[Open Folder](command:vscode.openFolder)"
       }
     ],
-    "chatParticipants": [
+    "languageModelTools": [
       {
-        "id": "todoIt.chat",
-        "fullName": "Todo It",
-        "name": "todo-it",
-        "description": "Ask questions about your TODOs and tasks (@todo-it /summarize, /overdue)",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "summarize",
-            "description": "Summarize all scanned TODOs by theme, flag urgent items"
-          },
-          {
-            "name": "overdue",
-            "description": "List tasks that are overdue or due today"
+        "name": "todoIt_listTodos",
+        "toolReferenceName": "todoComments",
+        "displayName": "Todo It: Scanned TODOs",
+        "icon": "$(checklist)",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "todo-it",
+          "todos"
+        ],
+        "userDescription": "List TODO/FIXME/HACK/… comments Todo It found in the workspace.",
+        "modelDescription": "Lists TODO-style comments (TODO, FIXME, HACK, BUG, NOTE, XXX, unchecked markdown checklist items, and any user-configured tags) that the Todo It extension has scanned in the open workspace. Each result has the tag, workspace-relative path:line and the comment text. Use this to answer questions about outstanding work, tech debt, or TODOs in the code, or before summarizing what is left to do. Filter with `tag` and/or `query` to keep results small.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tag": {
+              "type": "string",
+              "description": "Only return matches with this tag, e.g. \"FIXME\" (case-insensitive)."
+            },
+            "query": {
+              "type": "string",
+              "description": "Case-insensitive substring to match against comment text, source line, and file path."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of matches to return. Defaults to 200, capped by the todoIt.ai.maxFindings setting."
+            }
           }
-        ]
+        }
+      },
+      {
+        "name": "todoIt_listTasks",
+        "toolReferenceName": "tasks",
+        "displayName": "Todo It: Tasks",
+        "icon": "$(tasklist)",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "todo-it",
+          "tasks"
+        ],
+        "userDescription": "List your Todo It tasks, including overdue and due-today ones.",
+        "modelDescription": "Lists the user's manual tasks from the Todo It extension (a per-workspace task list, separate from TODO comments in code). Each task has an id, title, done state, optional priority (low/medium/high), due date (YYYY-MM-DD, marked OVERDUE when past), snooze date, parent task id for subtasks, and note. Use `status: \"due\"` to get open tasks that are overdue or due today. Task ids from this tool are needed for todoIt_setTaskDone and for adding subtasks with todoIt_addTask.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "done",
+                "all",
+                "due"
+              ],
+              "description": "Which tasks to return: open (default), done, all, or due (open tasks due today or earlier, excluding snoozed ones)."
+            },
+            "query": {
+              "type": "string",
+              "description": "Case-insensitive substring to match against task title and note."
+            }
+          }
+        }
+      },
+      {
+        "name": "todoIt_addTask",
+        "toolReferenceName": "addTask",
+        "displayName": "Todo It: Add Task",
+        "icon": "$(add)",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "todo-it",
+          "tasks"
+        ],
+        "userDescription": "Add a task to your Todo It task list.",
+        "modelDescription": "Creates a new manual task in the user's Todo It task list. Use when the user asks to track, remember, or add a task or todo item. The user is asked to confirm before the task is created.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "title"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Short, actionable task title."
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "description": "Optional priority."
+            },
+            "dueDate": {
+              "type": "string",
+              "description": "Optional due date as YYYY-MM-DD."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional longer description or context."
+            },
+            "parentId": {
+              "type": "string",
+              "description": "Optional id of an existing task (from todoIt_listTasks) to add this task as a subtask of."
+            },
+            "folder": {
+              "type": "string",
+              "description": "Workspace folder name, for multi-root workspaces. Defaults to the first folder."
+            }
+          }
+        }
+      },
+      {
+        "name": "todoIt_setTaskDone",
+        "toolReferenceName": "completeTask",
+        "displayName": "Todo It: Complete Task",
+        "icon": "$(check)",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "todo-it",
+          "tasks"
+        ],
+        "userDescription": "Mark a Todo It task done (or reopen it).",
+        "modelDescription": "Marks a Todo It manual task as done (default) or reopens it; subtasks follow their parent. Requires the task id from todoIt_listTasks. The user is asked to confirm.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "taskId"
+          ],
+          "properties": {
+            "taskId": {
+              "type": "string",
+              "description": "Id of the task, as returned by todoIt_listTasks."
+            },
+            "done": {
+              "type": "boolean",
+              "description": "true to mark the task done (default), false to reopen it."
+            }
+          }
+        }
+      }
+    ],
+    "chatSkills": [
+      {
+        "path": "./skills/todo-it/SKILL.md"
       }
     ],
     "commands": [
@@ -698,7 +827,9 @@
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src test",
+    "lint": "oxlint --type-aware src test",
+    "format": "oxfmt \"src/**/*.ts\" \"test/**/*.ts\" esbuild.js .vscode-test.mjs",
+    "format:check": "oxfmt --check \"src/**/*.ts\" \"test/**/*.ts\" esbuild.js .vscode-test.mjs",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "compile-tests": "node esbuild.js --test",
     "test": "npm run compile && npm run compile-tests && vscode-test",
@@ -710,17 +841,29 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.20.0",
-    "@types/vscode": "1.120.0",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "1.104.0",
     "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0",
-    "@vscode/vsce": "^3.9.2",
-    "esbuild": "^0.28.1",
-    "eslint": "^10.5.0",
-    "minimatch": "^10.2.5",
-    "mocha": "^11.7.6",
-    "ovsx": "^1.0.1",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.62.0"
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "minimatch": "^11.0.4",
+    "mocha": "^12.0.3",
+    "ovsx": "^1.3.0",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
+    "oxlint-tsgolint": "^7.0.2005",
+    "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "minimatch": "$minimatch",
+    "@vscode/test-cli": {
+      "mocha": {
+        "glob": {
+          "minimatch": "^9.0.7"
+        }
+      }
+    },
+    "serialize-javascript": "^7.1.4"
   }
 }

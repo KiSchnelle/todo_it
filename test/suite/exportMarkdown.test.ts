@@ -35,7 +35,10 @@ suite("renderTasksAsMarkdown", () => {
     const med = md.indexOf("medtask");
     const low = md.indexOf("lowtask");
     const none = md.indexOf("untyped");
-    assert.ok(high < med && med < low && low < none, "priority order should be high, medium, low, none");
+    assert.ok(
+      high < med && med < low && low < none,
+      "priority order should be high, medium, low, none",
+    );
   });
 
   test("renders subtasks as indented children under their parent", () => {
@@ -81,5 +84,12 @@ suite("renderTasksAsMarkdown", () => {
       { heading: "# Tasks" },
     );
     assert.match(md, /Child _\(low, due 2026-06-30\)_/);
+  });
+
+  test("renders orphaned subtasks (missing parent) as top-level", () => {
+    const md = renderTasksAsMarkdown([task("o", { title: "Orphan", parentId: "gone" })], {
+      heading: "# Tasks",
+    });
+    assert.match(md, /- \[ \] Orphan/);
   });
 });

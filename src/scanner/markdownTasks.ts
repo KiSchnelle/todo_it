@@ -3,7 +3,7 @@
 //   * [ ] task
 //   1. [ ] task
 // Only unchecked boxes are surfaced — checked boxes are already "done".
-const MD_TASK = /^[\t ]*(?:[-*+]|\d+\.)\s+\[ \]\s+(\S.*?)\s*$/;
+const MD_TASK = /^[\t ]*(?:[-*+]|\d+\.)\s+\[ \]\s+(\S.*)$/;
 /** Matches the "[ ]" position on a markdown task line (capture 1 = the prefix before it). */
 export const MD_TASK_CHECKBOX = /^([\t ]*(?:[-*+]|\d+\.)\s+)\[ \]/;
 
@@ -31,11 +31,10 @@ export function matchMarkdownTask(line: string): MarkdownTaskMatch | null {
   if (!m) {
     return null;
   }
-  const text = m[1];
-  // `m[1]` is captured after `\[ \]\s+`, so its start in the original line is
-  // (full match length minus captured length minus any trailing whitespace
-  // we already trimmed). Use indexOf as a robust fallback within the match.
-  const startCol = m.index + m[0].lastIndexOf(text);
+  // The capture is greedy (a lazy `.*?` + `\s*$` is quadratic on long space runs),
+  // so trim trailing whitespace here. It starts at the end of the match minus its length.
+  const text = m[1].trimEnd();
+  const startCol = m.index + m[0].length - m[1].length;
   const endCol = startCol + text.length;
   return { text, startCol, endCol };
 }

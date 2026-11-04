@@ -1,10 +1,5 @@
 import * as vscode from "vscode";
-import {
-  explainMatch,
-  suggestTaskPriority,
-  summarizeTodos,
-  trackAsTaskAI,
-} from "../ai/aiCommands";
+import { explainMatch, suggestTaskPriority, summarizeTodos, trackAsTaskAI } from "../ai/aiCommands";
 import { Configuration } from "../config/configuration";
 import { GroupingMode, ManualTask, TaskLink, TaskSortMode, TreeNode } from "../models/types";
 import { ScanController } from "../scanner/scanController";
@@ -31,8 +26,12 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
   const { taskStore, scanController, scanStore, config, treeProvider } = deps;
   context.subscriptions.push(
     vscode.commands.registerCommand("todoIt.refresh", () => scanController.scanAll()),
-    vscode.commands.registerCommand("todoIt.addTask", (folderUri?: string) => addTask(taskStore, folderUri)),
-    vscode.commands.registerCommand("todoIt.editTask", (node?: TreeNode) => editTask(taskStore, node)),
+    vscode.commands.registerCommand("todoIt.addTask", (folderUri?: string) =>
+      addTask(taskStore, folderUri),
+    ),
+    vscode.commands.registerCommand("todoIt.editTask", (node?: TreeNode) =>
+      editTask(taskStore, node),
+    ),
     vscode.commands.registerCommand(
       "todoIt.deleteTask",
       (node?: TreeNode, selection?: readonly TreeNode[]) => deleteTask(taskStore, node, selection),
@@ -48,7 +47,9 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
         setTaskPriority(taskStore, node, selection),
     ),
     vscode.commands.registerCommand("todoIt.openMatch", (node?: TreeNode) => openMatch(node)),
-    vscode.commands.registerCommand("todoIt.trackAsTask", (node?: TreeNode) => trackAsTask(taskStore, node)),
+    vscode.commands.registerCommand("todoIt.trackAsTask", (node?: TreeNode) =>
+      trackAsTask(taskStore, node),
+    ),
     vscode.commands.registerCommand("todoIt.openTaskLink", (node?: TreeNode) =>
       openTaskLink(taskStore, node),
     ),
@@ -88,8 +89,7 @@ export function registerCommands(context: vscode.ExtensionContext, deps: Command
     vscode.commands.registerCommand("todoIt.exportTasks", () => exportTasks(taskStore)),
     vscode.commands.registerCommand(
       "todoIt.snoozeTask",
-      (node?: TreeNode, selection?: readonly TreeNode[]) =>
-        snoozeTask(taskStore, node, selection),
+      (node?: TreeNode, selection?: readonly TreeNode[]) => snoozeTask(taskStore, node, selection),
     ),
   );
 }
@@ -105,14 +105,21 @@ async function snoozeTask(
   }
   const tomorrow = isoDate(addDays(new Date(), 1));
   const nextWeek = isoDate(addDays(new Date(), 7));
-  const items: Array<vscode.QuickPickItem & { value: string | "custom" | "clear" }> = [
+  const items: Array<vscode.QuickPickItem & { value: "custom" | "clear" | (string & {}) }> = [
     { label: `$(clock) Tomorrow`, description: tomorrow, value: tomorrow },
     { label: `$(clock) Next week`, description: nextWeek, value: nextWeek },
-    { label: `$(edit) Pick a date…`, description: "YYYY-MM-DD or '3 days', '2 weeks'…", value: "custom" },
+    {
+      label: `$(edit) Pick a date…`,
+      description: "YYYY-MM-DD or '3 days', '2 weeks'…",
+      value: "custom",
+    },
     { label: `$(circle-slash) Clear snooze`, value: "clear" },
   ];
   const picked = await vscode.window.showQuickPick(items, {
-    placeHolder: targets.length === 1 ? `Snooze "${targets[0].task.title}" until…` : `Snooze ${targets.length} tasks until…`,
+    placeHolder:
+      targets.length === 1
+        ? `Snooze "${targets[0].task.title}" until…`
+        : `Snooze ${targets.length} tasks until…`,
   });
   if (!picked) {
     return;
@@ -137,11 +144,8 @@ async function snoozeTask(
   } else {
     snoozedUntil = picked.value;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.updateTask(folder, t.task.id, { snoozedUntil });
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.updateMany(folder, ids, { snoozedUntil });
   }
 }
 
@@ -151,9 +155,8 @@ async function exportTasks(taskStore: TaskStore): Promise<void> {
     void vscode.window.showWarningMessage("Todo It: open a folder to export tasks from.");
     return;
   }
-  const folder = folders.length === 1
-    ? folders[0]
-    : await pickFolder("Export tasks from which folder?");
+  const folder =
+    folders.length === 1 ? folders[0] : await pickFolder("Export tasks from which folder?");
   if (!folder) {
     return;
   }
@@ -265,7 +268,8 @@ async function goToTodo(scanStore: ScanStore): Promise<void> {
 async function setFilter(treeProvider: TodoTreeProvider): Promise<void> {
   const current = treeProvider.getFilter();
   const value = await vscode.window.showInputBox({
-    prompt: "Filter Todo It by substring (matches task titles/notes and scanned tag text, line, path)",
+    prompt:
+      "Filter Todo It by substring (matches task titles/notes and scanned tag text, line, path)",
     placeHolder: "auth, refactor, FIXME…",
     value: current ?? "",
   });
@@ -283,7 +287,10 @@ async function setTaskSort(config: Configuration): Promise<void> {
     { label: "Due date", mode: "dueDate" },
   ];
   const picked = await vscode.window.showQuickPick(
-    options.map((o) => ({ ...o, description: o.mode === current ? "$(check) current" : undefined })),
+    options.map((o) => ({
+      ...o,
+      description: o.mode === current ? "$(check) current" : undefined,
+    })),
     { placeHolder: "Sort tasks by…" },
   );
   if (picked) {
@@ -545,7 +552,8 @@ async function trackAsTask(taskStore: TaskStore, node?: TreeNode): Promise<void>
 async function addTask(taskStore: TaskStore, folderUri?: string): Promise<void> {
   // If a folderUri was passed (e.g. from the inline "Add a task…" row), use it
   // directly so multi-root users don't get an extra folder picker.
-  const folder = (folderUri && folderByKey(folderUri)) || (await pickFolder("Add task to which folder?"));
+  const folder =
+    (folderUri && folderByKey(folderUri)) || (await pickFolder("Add task to which folder?"));
   if (!folder) {
     return;
   }
@@ -576,7 +584,10 @@ async function editTask(taskStore: TaskStore, node?: TreeNode): Promise<void> {
 
 /** Reduces a TreeView context-menu invocation to a unique list of task nodes,
  *  honoring the multi-selection when VS Code passes one. */
-function taskTargets(node?: TreeNode, selection?: readonly TreeNode[]): Array<Extract<TreeNode, { kind: "task" }>> {
+function taskTargets(
+  node?: TreeNode,
+  selection?: readonly TreeNode[],
+): Array<Extract<TreeNode, { kind: "task" }>> {
   const pool: TreeNode[] = selection && selection.length > 0 ? [...selection] : node ? [node] : [];
   const seen = new Set<string>();
   const out: Array<Extract<TreeNode, { kind: "task" }>> = [];
@@ -594,6 +605,23 @@ function taskTargets(node?: TreeNode, selection?: readonly TreeNode[]): Array<Ex
   return out;
 }
 
+/** Groups task nodes by workspace folder so bulk actions persist once per folder. */
+function groupByFolder(
+  targets: readonly Extract<TreeNode, { kind: "task" }>[],
+): Array<[vscode.WorkspaceFolder, string[]]> {
+  const byKey = new Map<string, [vscode.WorkspaceFolder, string[]]>();
+  for (const t of targets) {
+    const folder = folderByKey(t.folderUri);
+    if (!folder) {
+      continue;
+    }
+    const entry = byKey.get(t.folderUri) ?? [folder, []];
+    entry[1].push(t.task.id);
+    byKey.set(t.folderUri, entry);
+  }
+  return [...byKey.values()];
+}
+
 async function deleteTask(
   taskStore: TaskStore,
   node?: TreeNode,
@@ -604,13 +632,21 @@ async function deleteTask(
     return;
   }
   // Tally descendants across the selection so the confirmation prompt is accurate.
-  let extra = 0;
+  // Descendants already in the selection are counted once (as targets).
+  const targetKeys = new Set(targets.map((t) => `${t.folderUri}|${t.task.id}`));
+  const counted = new Set<string>();
   for (const t of targets) {
     const folder = folderByKey(t.folderUri);
     if (folder) {
-      extra += (await taskStore.descendantsOf(folder, t.task.id)).length;
+      for (const d of await taskStore.descendantsOf(folder, t.task.id)) {
+        const k = `${t.folderUri}|${d.id}`;
+        if (!targetKeys.has(k)) {
+          counted.add(k);
+        }
+      }
     }
   }
+  const extra = counted.size;
   const prompt =
     targets.length === 1
       ? `Delete task "${targets[0].task.title}"${extra > 0 ? ` (and ${extra} subtask${extra === 1 ? "" : "s"})` : ""}?`
@@ -619,11 +655,8 @@ async function deleteTask(
   if (choice !== "Delete") {
     return;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.removeTask(folder, t.task.id);
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.removeMany(folder, ids);
   }
 }
 
@@ -640,11 +673,8 @@ async function toggleTaskDone(
   // Otherwise we drive all targets to done — the common bulk action.
   const allDone = targets.every((t) => t.task.done);
   const next = !allDone;
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.setDone(folder, t.task.id, next);
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.setDoneMany(folder, ids, next);
   }
 }
 
@@ -674,10 +704,7 @@ async function setTaskPriority(
   if (!picked) {
     return;
   }
-  for (const t of targets) {
-    const folder = folderByKey(t.folderUri);
-    if (folder) {
-      await taskStore.updateTask(folder, t.task.id, { priority: picked.priority });
-    }
+  for (const [folder, ids] of groupByFolder(targets)) {
+    await taskStore.updateMany(folder, ids, { priority: picked.priority });
   }
 }

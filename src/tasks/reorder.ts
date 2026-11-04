@@ -6,7 +6,8 @@ import { ManualTask } from "../models/types";
  * - `"END"` → after everything.
  * - a task id → insert before that task.
  */
-export type ReorderTarget = "TOP" | "END" | string;
+// `string & {}` keeps the "TOP"/"END" literals visible to autocomplete.
+export type ReorderTarget = "TOP" | "END" | (string & {});
 
 /**
  * Mutates each task's `order` field so the dragged tasks land at `target` in

@@ -41,7 +41,11 @@ export class TaskDnDController implements vscode.TreeDragAndDropController<TreeN
         continue;
       }
       const key = `${node.folderUri}|${node.task.parentId ?? ""}`;
-      const bucket = byBucket.get(key) ?? { folderUri: node.folderUri, parentId: node.task.parentId, ids: [] };
+      const bucket = byBucket.get(key) ?? {
+        folderUri: node.folderUri,
+        parentId: node.task.parentId,
+        ids: [],
+      };
       bucket.ids.push(node.task.id);
       byBucket.set(key, bucket);
     }

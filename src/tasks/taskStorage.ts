@@ -67,7 +67,7 @@ function rehydrateTask(raw: ManualTask): ManualTask {
 }
 
 /** Emit keys in a stable order and drop empty optionals to keep diffs small. */
-function normalizeTask(t: ManualTask): ManualTask {
+export function normalizeTask(t: ManualTask): ManualTask {
   const links = t.links?.filter(Boolean) ?? [];
   return {
     id: t.id,
@@ -85,6 +85,21 @@ function normalizeTask(t: ManualTask): ManualTask {
   };
 }
 
+/** Throws if `uri` exists and is a symbolic link. A missing path is fine. */
+async function assertNotSymlink(uri: vscode.Uri): Promise<void> {
+  try {
+    const stat = await vscode.workspace.fs.stat(uri);
+    if (stat.type & vscode.FileType.SymbolicLink) {
+      throw new Error(`Refusing to write through symbolic link: ${uri.fsPath}`);
+    }
+  } catch (err) {
+    if (isFileNotFound(err)) {
+      return;
+    }
+    throw err;
+  }
+}
+
 /** Persists tasks to a JSON file relative to a workspace folder. */
 export class FileTaskStorage implements TaskStorage {
   constructor(
@@ -96,27 +111,63 @@ export class FileTaskStorage implements TaskStorage {
     return vscode.Uri.joinPath(folder.uri, this.relPath);
   }
 
+  /** Folders whose on-disk file was unreadable or lossy to load; it is backed up before the first overwrite. */
+  private readonly needsBackup = new Set<string>();
+
   async load(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {
     const uri = this.fileUri(folder);
+    const key = folder.uri.toString();
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
       const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<TaskFile>;
       if (parsed?.schemaVersion !== TASKS_SCHEMA_VERSION || !Array.isArray(parsed.tasks)) {
         this.logger.warn(`Ignoring malformed ${this.relPath} in "${folder.name}".`);
+        this.needsBackup.add(key);
         return [];
       }
-      return parsed.tasks.filter(isValidTask).map(rehydrateTask);
+      const valid = parsed.tasks.filter(isValidTask);
+      if (valid.length !== parsed.tasks.length) {
+        this.logger.warn(
+          `Dropped ${parsed.tasks.length - valid.length} invalid task(s) from ${this.relPath} in "${folder.name}".`,
+        );
+        this.needsBackup.add(key);
+      } else {
+        this.needsBackup.delete(key);
+      }
+      return valid.map(rehydrateTask);
     } catch (err) {
       if (isFileNotFound(err)) {
+        this.needsBackup.delete(key);
         return [];
       }
       this.logger.error(`Failed to read ${this.relPath} in "${folder.name}"`, err);
+      this.needsBackup.add(key);
       return [];
     }
   }
 
   async save(folder: vscode.WorkspaceFolder, tasks: ManualTask[]): Promise<void> {
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(folder.uri, ".vscode"));
+    const dir = vscode.Uri.joinPath(folder.uri, ".vscode");
+    // Refuse to write through symlinks (a hostile repo could redirect the write
+    // to an arbitrary file outside the workspace).
+    await assertNotSymlink(dir);
+    await assertNotSymlink(this.fileUri(folder));
+    await vscode.workspace.fs.createDirectory(dir);
+    const key = folder.uri.toString();
+    if (this.needsBackup.has(key)) {
+      // The existing file could not be fully understood; keep a copy before replacing it.
+      const target = this.fileUri(folder);
+      const backup = vscode.Uri.joinPath(folder.uri, `${this.relPath}.bak-${Date.now()}`);
+      try {
+        await vscode.workspace.fs.copy(target, backup, { overwrite: false });
+        this.logger.warn(`Backed up unreadable ${this.relPath} to ${backup.fsPath}.`);
+      } catch (err) {
+        if (!isFileNotFound(err)) {
+          throw new Error(`Refusing to overwrite unreadable ${this.relPath}: backup failed.`);
+        }
+      }
+      this.needsBackup.delete(key);
+    }
     const file: TaskFile = { schemaVersion: TASKS_SCHEMA_VERSION, tasks: tasks.map(normalizeTask) };
     const text = `${JSON.stringify(file, null, 2)}\n`;
     await vscode.workspace.fs.writeFile(this.fileUri(folder), new TextEncoder().encode(text));
@@ -144,6 +195,7 @@ export class GitignoredFileTaskStorage extends FileTaskStorage {
     this.ensured.add(key);
     const giUri = vscode.Uri.joinPath(folder.uri, ".gitignore");
     try {
+      await assertNotSymlink(giUri);
       let text = "";
       try {
         text = new TextDecoder().decode(await vscode.workspace.fs.readFile(giUri));
@@ -174,9 +226,9 @@ export class WorkspaceStateTaskStorage implements TaskStorage {
     return `todoIt.tasks.${folder.uri.toString()}`;
   }
 
-  async load(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {
+  load(folder: vscode.WorkspaceFolder): Promise<ManualTask[]> {
     const tasks = this.context.workspaceState.get<ManualTask[]>(this.key(folder), []);
-    return tasks.map(rehydrateTask);
+    return Promise.resolve(tasks.map(rehydrateTask));
   }
 
   async save(folder: vscode.WorkspaceFolder, tasks: ManualTask[]): Promise<void> {

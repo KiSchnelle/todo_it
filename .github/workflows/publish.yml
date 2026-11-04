@@ -20,8 +20,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish ${{ matrix.target }}
+  # Build every platform VSIX without access to any publishing secret.
+  package:
+    name: Package ${{ matrix.target }}
+    # upload-artifact needs actions: write on top of the workflow's read default.
+    permissions:
+      contents: read
+      actions: write
     strategy:
       fail-fast: false
       matrix:
@@ -38,27 +43,78 @@ jobs:
             target: darwin-x64
           - os: macos-latest
             target: darwin-arm64
+          # Alpine reuses the static linux ripgrep binaries.
+          - os: ubuntu-latest
+            target: alpine-x64
+          - os: ubuntu-24.04-arm
+            target: alpine-arm64
+          # Browser build (vscode.dev / github.dev); loads dist/extension.web.js.
+          - os: ubuntu-latest
+            target: web
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
+      # Fail fast if the tag and package.json disagree (otherwise --skip-duplicate
+      # would turn a forgotten version bump into a silent green no-op).
+      - name: Verify tag matches package.json version
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          node -e "const v=require('./package.json').version; const t=process.env.TAG.replace(/^v/,''); if (v!==t) { console.error('tag '+t+' != package.json '+v); process.exit(1); }"
       - run: npm ci
-      # Package once with vsce (runs `vscode:prepublish` = typecheck + lint + production build),
-      # then push the same vsix to both the VS Marketplace and Open VSX.
+      # vsce package runs `vscode:prepublish` (typecheck + lint + production build).
       - name: Package
         run: npx vsce package --target ${{ matrix.target }} -o todo-it-${{ matrix.target }}.vsix
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vsix-${{ matrix.target }}
+          path: todo-it-${{ matrix.target }}.vsix
+          if-no-files-found: error
+          retention-days: 7
+
+  # One gated job publishes all VSIXs. The `marketplace` environment holds VSCE_PAT / OVSX_PAT,
+  # requires a reviewer's approval and only allows v* tags. It runs only if every platform built,
+  # and installs dependencies with --ignore-scripts so no package install script sees the tokens.
+  publish:
+    name: Publish to VS Marketplace and Open VSX
+    needs: package
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: vsix
       - name: Publish to VS Marketplace
-        run: npx vsce publish --packagePath todo-it-${{ matrix.target }}.vsix --skip-duplicate
+        run: npx vsce publish --skip-duplicate --packagePath vsix/*.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      # Open VSX failures (e.g. unverified namespace, transient outage) don't fail the run.
+      # Open VSX is the registry for Cursor, Antigravity, Windsurf/Devin Desktop, Kiro, Trae and
+      # VSCodium, so a failure here fails the run. Re-running is safe: both steps skip duplicates.
       - name: Publish to Open VSX
-        run: npx ovsx publish todo-it-${{ matrix.target }}.vsix --skip-duplicate
-        continue-on-error: true
+        run: |
+          for f in vsix/*.vsix; do
+            npx ovsx publish "$f" --skip-duplicate
+          done
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}

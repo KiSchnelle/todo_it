@@ -3,6 +3,7 @@ import { ScannedFileResult, TagMatch, TodoItConfig } from "../models/types";
 import { Logger } from "../util/logger";
 import { isMarkdownUri, matchMarkdownTask, MD_TASK_TAG } from "./markdownTasks";
 import { ScanResult, Scanner } from "./scanner";
+import { createPathFilter } from "../watcher/pathFilter";
 import { TagMatcher } from "./tagMatcher";
 
 const READ_CONCURRENCY = 16;
@@ -38,6 +39,25 @@ export class JsScanner implements Scanner {
     config: TodoItConfig,
     token?: vscode.CancellationToken,
   ): Promise<ScanResult> {
+    let isDirectory = false;
+    try {
+      isDirectory =
+        ((await vscode.workspace.fs.stat(fileUri)).type & vscode.FileType.Directory) !== 0;
+    } catch {
+      // Fall through: the read below reports the failure.
+    }
+    if (isDirectory) {
+      // A directory event (created/moved in): scan its subtree.
+      const rel = vscode.workspace.asRelativePath(fileUri, false).replace(/\\/g, "/");
+      const include = new vscode.RelativePattern(folder, `${rel}/**/*`);
+      const exclude = combineGlobs([...config.excludeGlobs, ...ALWAYS_EXCLUDE]);
+      const files = await vscode.workspace.findFiles(include, exclude, config.maxResults, token);
+      const filter = createPathFilter(config.includeGlobs, []);
+      const wanted = files.filter((f) =>
+        filter.isIncluded(vscode.workspace.asRelativePath(f, false)),
+      );
+      return this.scanFiles(folder, wanted, config, token);
+    }
     return this.scanFiles(folder, [fileUri], config, token);
   }
 

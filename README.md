@@ -94,7 +94,15 @@ AI features run through VS Code's standard [Language Model API](https://code.vis
 - **AI: Suggest Priority** — for any task; uses title + note + linked code context, then offers a one-click *Apply*.
 - **AI: Track as Task (Expanded)** — turns a cryptic `// TODO: fix it` into a real task with title, description, and a suggested priority.
 - **AI: Explain Todo** — explains what a cryptic TODO is asking for, using surrounding code.
-- **Chat participant** — type `@todo-it` in the Copilot Chat panel to ask free-form questions ("which TODOs touch authentication?"), or use the slash commands `@todo-it /summarize` and `@todo-it /overdue`. The `/overdue` command is pure JS (no model call) so it's instant.
+- **Agent tools** — Todo It contributes [Language Model tools](https://code.visualstudio.com/api/extension-guides/tools), so Copilot's agent (or any chat that supports tools) can work with your todos directly. Just ask *"which TODOs touch authentication?"* or *"what's overdue?"*, or reference a tool explicitly with `#`:
+  - `#todoComments` — scanned TODO/FIXME/… comments, filterable by tag or text.
+  - `#tasks` — your manual tasks with ids, priorities, due dates and an *OVERDUE* marker (`status: due` lists overdue + due-today).
+  - `#addTask` — create a task (title, priority, due date, note, parent). Asks for confirmation.
+  - `#completeTask` — mark a task done or reopen it. Asks for confirmation.
+
+  Todo It also ships an **agent skill** that teaches the agent when to use which tool, how to look up task ids and how to avoid duplicate tasks. Skills need VS Code 1.109 or newer; on older versions and editors without skill support the tools work the same, just without that extra guidance.
+
+  > The old `@todo-it` chat participant has been removed — VS Code deprecated chat participants and they no longer run in the Copilot harness. The tools above cover the same ground (`/summarize` → ask the agent to summarize `#todoComments`; `/overdue` → `#tasks`).
 
 ### ⚡ Live, multi-root, and on the web
 - **Live updates**: files are re-scanned automatically as you edit and save (debounced); deletions disappear on their own.
@@ -188,7 +196,7 @@ Configure everything under the **Todo It** section of Settings (`todoIt.*`).
 
 ## Requirements
 
-- **VS Code 1.120.0 or newer.**
+- **VS Code 1.104.0 or newer** — also works in VS Code-based editors such as Cursor, Windsurf, VSCodium, Kiro, Trae, Positron and code-server/Gitpod.
 - On desktop, scanning uses the bundled ripgrep binary (very fast). In browser-based VS Code (github.dev / vscode.dev / Codespaces / Gitpod), a JavaScript fallback takes over — slower, and it doesn't honor `.gitignore` (use `todoIt.exclude`).
 
 ## Trust & privacy

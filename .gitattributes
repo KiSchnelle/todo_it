@@ -1,0 +1,6 @@
+# Always check out text files with LF so the formatter (oxfmt) and tests behave the same on
+# Windows, where git would otherwise convert to CRLF.
+* text=auto eol=lf
+
+*.png binary
+*.vsix binary

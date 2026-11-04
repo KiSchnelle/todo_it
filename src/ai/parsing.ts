@@ -42,7 +42,11 @@ export function parseExpandedTaskResponse(text: string): ExpandedTask | undefine
       note?: unknown;
       priority?: unknown;
     };
-    if (typeof parsed.title === "string" && parsed.title.trim() && typeof parsed.note === "string") {
+    if (
+      typeof parsed.title === "string" &&
+      parsed.title.trim() &&
+      typeof parsed.note === "string"
+    ) {
       const priority = isPriority(parsed.priority) ? parsed.priority : undefined;
       return { title: parsed.title.trim(), note: parsed.note, priority };
     }
