@@ -100,6 +100,8 @@ AI features run through VS Code's standard [Language Model API](https://code.vis
   - `#addTask` — create a task (title, priority, due date, note, parent). Asks for confirmation.
   - `#completeTask` — mark a task done or reopen it. Asks for confirmation.
 
+  Todo It also ships an **agent skill** that teaches the agent when to use which tool, how to look up task ids and how to avoid duplicate tasks. Skills need VS Code 1.109 or newer; on older versions and editors without skill support the tools work the same, just without that extra guidance.
+
   > The old `@todo-it` chat participant has been removed — VS Code deprecated chat participants and they no longer run in the Copilot harness. The tools above cover the same ground (`/summarize` → ask the agent to summarize `#todoComments`; `/overdue` → `#tasks`).
 
 ### ⚡ Live, multi-root, and on the web
