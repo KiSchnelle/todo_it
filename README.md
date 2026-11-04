@@ -95,12 +95,12 @@ AI features run through VS Code's standard [Language Model API](https://code.vis
 - **AI: Track as Task (Expanded)** — turns a cryptic `// TODO: fix it` into a real task with title, description, and a suggested priority.
 - **AI: Explain Todo** — explains what a cryptic TODO is asking for, using surrounding code.
 - **Agent tools** — Todo It contributes [Language Model tools](https://code.visualstudio.com/api/extension-guides/tools), so Copilot's agent (or any chat that supports tools) can work with your todos directly. Just ask *"which TODOs touch authentication?"* or *"what's overdue?"*, or reference a tool explicitly with `#`:
-  - `#todos` — scanned TODO/FIXME/… comments, filterable by tag or text.
+  - `#todoComments` — scanned TODO/FIXME/… comments, filterable by tag or text.
   - `#tasks` — your manual tasks with ids, priorities, due dates and an *OVERDUE* marker (`status: due` lists overdue + due-today).
   - `#addTask` — create a task (title, priority, due date, note, parent). Asks for confirmation.
   - `#completeTask` — mark a task done or reopen it. Asks for confirmation.
 
-  > The old `@todo-it` chat participant has been removed — VS Code deprecated chat participants and they no longer run in the Copilot harness. The tools above cover the same ground (`/summarize` → ask the agent to summarize `#todos`; `/overdue` → `#tasks`).
+  > The old `@todo-it` chat participant has been removed — VS Code deprecated chat participants and they no longer run in the Copilot harness. The tools above cover the same ground (`/summarize` → ask the agent to summarize `#todoComments`; `/overdue` → `#tasks`).
 
 ### ⚡ Live, multi-root, and on the web
 - **Live updates**: files are re-scanned automatically as you edit and save (debounced); deletions disappear on their own.
@@ -194,7 +194,7 @@ Configure everything under the **Todo It** section of Settings (`todoIt.*`).
 
 ## Requirements
 
-- **VS Code 1.120.0 or newer.**
+- **VS Code 1.104.0 or newer** — also works in VS Code-based editors such as Cursor, Windsurf, VSCodium, Kiro, Trae, Positron and code-server/Gitpod.
 - On desktop, scanning uses the bundled ripgrep binary (very fast). In browser-based VS Code (github.dev / vscode.dev / Codespaces / Gitpod), a JavaScript fallback takes over — slower, and it doesn't honor `.gitignore` (use `todoIt.exclude`).
 
 ## Trust & privacy

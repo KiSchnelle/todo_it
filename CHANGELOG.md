@@ -6,12 +6,27 @@ All notable changes to the Todo It extension are documented here.
 
 ### Changed
 - **Replaced the `@todo-it` chat participant with Language Model tools.** VS Code deprecated chat participants and they are not supported in the Copilot harness (you'd see a *"Replace Chat Participant"* warning). Todo It now contributes four agent tools instead, usable automatically by the agent or explicitly via `#` references in any chat:
-  - `#todos` (`todoIt_listTodos`) — scanned TODO comments, filterable by `tag` / `query`, capped by `todoIt.ai.maxFindings`.
+  - `#todoComments` (`todoIt_listTodos`) — scanned TODO comments, filterable by `tag` / `query`, capped by `todoIt.ai.maxFindings`.
   - `#tasks` (`todoIt_listTasks`) — manual tasks with ids, priority, due/overdue, snooze and subtask info; `status: open | done | all | due`.
   - `#addTask` (`todoIt_addTask`) — create a task or subtask (with confirmation).
   - `#completeTask` (`todoIt_setTaskDone`) — mark a task done / reopen it, cascading to subtasks (with confirmation).
-- **Dependencies refreshed**: `@vscode/vsce` 4, `mocha` 12, `minimatch` 11, `eslint` 10.14, `typescript-eslint` 8.72, `esbuild` 0.28.2, `ovsx` 1.3, `@vscode/test-electron` 3.1, `@types/node` 22.20.5. TypeScript stays on 6.0 (typescript-eslint doesn't support TypeScript 7 yet) and `@types/vscode` stays pinned to the `engines.vscode` floor (1.120).
+- **Minimum VS Code lowered to 1.104** (from 1.120) so the extension installs in VS Code-based editors that track an older base: Cursor, Kiro, Trae, Antigravity and Gitpod/OpenVSCode Server. Nothing newer than 1.104 was needed. CI now also runs the test suite on VS Code 1.104.0.
+- **Tooling: TypeScript 7 and oxlint.** `tsc` is now TypeScript 7 (the native compiler; about 4x faster type-check, no config changes). ESLint + typescript-eslint, which blocked TypeScript 7, are replaced by [oxlint](https://oxc.rs) with type-aware rules (`no-floating-promises`, `no-misused-promises`, `await-thenable`, …) via `oxlint-tsgolint`. Lint drops from ~1.6 s to ~0.6 s while checking more. Config lives in `.oxlintrc.json`.
+- **Dependencies refreshed**: `@vscode/vsce` 4, `mocha` 12, `minimatch` 11, `esbuild` 0.28.2, `ovsx` 1.3, `@vscode/test-electron` 3.1, `@types/node` 22.20.5.
 - **Security**: npm `overrides` force patched `minimatch` and `serialize-javascript` in transitive dev dependencies, clearing all high-severity `npm audit` findings. The shipped extension has no known vulnerabilities.
+
+### Added
+- **More platforms**: the release workflow now also publishes `web` (vscode.dev / github.dev), `alpine-x64` and `alpine-arm64` VSIXs. If ripgrep's binary is missing on a desktop host, Todo It falls back to the JS scanner instead of failing to activate.
+
+### Fixed
+- **Data safety for `todos.json`**: a malformed, unreadable or newer-schema task file is backed up (`todos.json.bak-<timestamp>`) before it is ever overwritten; external edits (git pull, branch switch, manual edits) are reloaded instead of being clobbered by a stale in-memory copy; concurrent first loads no longer drop a just-made change; task-file and `.gitignore` writes refuse to follow symlinks.
+- **Subtask checkboxes**: un-checking one subtask no longer reopens all of its siblings (the tree now manages checkbox state itself), and a corrupted parent cycle can no longer hang the extension.
+- **"Today" is your local date**, not UTC — due/overdue, *Tomorrow* / *Next week* snooze and the `#tasks` tool were off by a day in many time zones.
+- **Incremental rescans now match full scans**: they respect `.gitignore`, `todoIt.include`, gitignore-style `todoIt.exclude` globs, and `todoIt.maxResults`; hidden files (`.github/…`) are scanned consistently; deleting or moving a directory removes/rescans everything beneath it; a slow full scan can no longer overwrite newer per-file results; a removed workspace folder's in-flight scan no longer re-adds its results; large bulk changes (branch switch) are batched with bounded concurrency instead of one ripgrep process per file at once; the *Result limit reached* message shows up again.
+- **Tag matching**: tags with non-word edge characters (`@todo`, `TODO!`) now match, and ripgrep and the web scanner agree on word boundaries next to non-ASCII text. Lines with invalid UTF-8 are no longer silently dropped.
+- **Markdown checklists**: ticking a checkbox no longer ticks the wrong line when the file changed since the scan, and a crafted `.md` line can no longer freeze the extension host (quadratic regex).
+- **AI**: cancelling *AI: Track as Task (Expanded)* no longer creates a task anyway; cancelled requests no longer show partial output. The LM tools validate model input, escape Markdown in confirmations and show the full task (note, parent, folder) before creating it; subtasks resolve their parent's folder in multi-root workspaces.
+- Renaming a **folder** now updates task links to files inside it; bulk actions write `todos.json` once instead of once per task; export keeps subtasks whose parent was deleted; the bulk-delete prompt no longer double-counts; editor highlights are not misplaced in unsaved editors; the Task Details panel closes with the extension.
 
 ### Removed
 - `@todo-it` chat participant and its `/summarize` and `/overdue` slash commands (see above for replacements; `AI: Summarize Found in Code` is unchanged).
